@@ -131,4 +131,12 @@ def tsunami_info():
 
 if __name__ == "__main__":
     print("OpenSeismo Lite running at: http://localhost:5000")
-    app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False)
+    # CRITICAL: Never use debug=True or use_reloader=True in production builds
+    # These cause infinite tab spawning in PyInstaller executables
+    app.run(
+        host="127.0.0.1", 
+        port=5000, 
+        debug=False,           # MUST be False
+        use_reloader=False,    # MUST be False
+        use_debugger=False     # Extra safety
+    )

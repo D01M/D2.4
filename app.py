@@ -73,31 +73,14 @@ def main():
     
     # Try to acquire lock (prevents multiple launches)
     if not acquire_lock():
-        print("OpenSeismo Lite is already starting or running.")
-        print("Waiting to connect to http://localhost:5000...")
-        
-        # Wait for server to become available
-        for attempt in range(20):  # Try for up to 10 seconds
-            if is_port_in_use(5000):
-                time.sleep(0.5)
-                try:
-                    webbrowser.open('http://localhost:5000')
-                except:
-                    pass
-                return
-            time.sleep(0.5)
-        
-        print("Could not connect to OpenSeismo Lite server.")
+        print("OpenSeismo Lite is already running.")
+        print("Connect to http://localhost:5000 in your browser.")
         return
     
     try:
         # Final check if server is already running
         if is_port_in_use(5000):
             print("OpenSeismo Lite is already running on http://localhost:5000")
-            try:
-                webbrowser.open('http://localhost:5000')
-            except:
-                pass
             return
         
         # Start Flask server as a subprocess
@@ -134,16 +117,18 @@ def main():
         
         if not server_ready:
             print("Warning: Server may not have started properly")
-        
-        # Give it a bit more time to fully initialize
-        time.sleep(0.5)
-        
-        # Open browser ONLY on first launch
-        try:
-            webbrowser.open('http://localhost:5000')
-        except Exception as e:
-            print(f"Could not open browser: {e}")
             print("Please visit http://localhost:5000 manually")
+        else:
+            # Give it a bit more time to fully initialize
+            time.sleep(1)
+            
+            # Open browser ONLY ONCE
+            try:
+                print("Opening browser...")
+                webbrowser.open('http://localhost:5000')
+            except Exception as e:
+                print(f"Could not open browser automatically: {e}")
+                print("Please visit http://localhost:5000 manually in your browser")
         
         # Keep the server running
         try:
