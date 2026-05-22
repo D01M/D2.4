@@ -1,0 +1,1932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>OpenSeismo Lite - Georgia Stations</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<style>
+    *{
+        margin:0;
+        padding:0;
+        box-sizing:border-box;
+        font-family:Arial, sans-serif;
+    }
+
+    body{
+        background:#0b1020;
+        color:white;
+        overflow:hidden;
+    }
+
+    #topbar{
+        min-height:60px;
+        background:#111827;
+        border-bottom:1px solid #1f2937;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:20px;
+        padding:10px 20px;
+    }
+
+    #topbar h1{
+        font-size:22px;
+        color:#60a5fa;
+        white-space:nowrap;
+    }
+
+    #disclaimer{
+        font-size:12px;
+        color:#9ca3af;
+        text-align:right;
+        line-height:1.35;
+    }
+
+    #container{
+        display:flex;
+        height:calc(100vh - 60px);
+    }
+
+    #sidebar{
+        width:390px;
+        background:#0f172a;
+        border-right:1px solid #1e293b;
+        overflow-y:auto;
+        padding:15px;
+    }
+
+    #map{
+        flex:1;
+    }
+
+    .quake{
+        background:#111827;
+        border:1px solid #1f2937;
+        border-radius:10px;
+        padding:12px;
+        margin-bottom:10px;
+        transition:0.2s;
+        cursor:pointer;
+    }
+
+    .quake:hover{
+        transform:scale(1.01);
+        border-color:#3b82f6;
+    }
+
+    .mag{
+        font-size:20px;
+        font-weight:bold;
+    }
+
+    .small{
+        font-size:13px;
+        color:#cbd5e1;
+        margin-top:5px;
+        line-height:1.35;
+    }
+
+    .controls{
+        margin-bottom:12px;
+        background:#111827;
+        border:1px solid #1f2937;
+        border-radius:10px;
+        padding:10px;
+    }
+
+    input[type="range"]{
+        width:100%;
+    }
+
+    select, button{
+        width:100%;
+        margin-top:7px;
+        padding:8px;
+        border-radius:8px;
+        border:1px solid #334155;
+        background:#020617;
+        color:white;
+    }
+
+    button{
+        cursor:pointer;
+        background:#1d4ed8;
+        border-color:#2563eb;
+        font-weight:bold;
+    }
+
+    button:hover{
+        background:#2563eb;
+    }
+
+    .footer{
+        margin-top:20px;
+        font-size:12px;
+        color:#94a3b8;
+        line-height:1.5;
+    }
+
+    .legend, .statusBox{
+        margin-top:12px;
+        background:#111827;
+        padding:10px;
+        border-radius:10px;
+        font-size:13px;
+        border:1px solid #1f2937;
+    }
+
+    .dot{
+        display:inline-block;
+        width:10px;
+        height:10px;
+        border-radius:50%;
+        margin-right:6px;
+    }
+
+    #dateRange{
+        font-size:12px;
+        color:#60a5fa;
+        margin-bottom:10px;
+        padding:8px;
+        background:#111827;
+        border-radius:8px;
+        border:1px solid #1f2937;
+        line-height:1.4;
+    }
+
+    .ok{ color:#22c55e; }
+    .warn{ color:#facc15; }
+    .bad{ color:#fb7185; }
+
+    @media (max-width: 800px){
+        body{ overflow:auto; }
+        #container{ flex-direction:column; height:auto; }
+        #sidebar{ width:100%; height:45vh; }
+        #map{ height:55vh; min-height:420px; }
+        #topbar{ align-items:flex-start; flex-direction:column; }
+        #disclaimer{ text-align:left; }
+    }
+
+    #wavePanel{
+        position:absolute;
+        right:20px;
+        bottom:20px;
+        width:360px;
+        max-width:calc(100vw - 40px);
+        background:#0f172a;
+        border:1px solid #334155;
+        border-radius:14px;
+        padding:14px;
+        z-index:1000;
+        box-shadow:0 10px 30px rgba(0,0,0,0.35);
+        display:none;
+    }
+
+    #wavePanel h3{
+        font-size:16px;
+        color:#60a5fa;
+        margin-bottom:8px;
+    }
+
+    #wavePanel .waveText{
+        font-size:12px;
+        color:#cbd5e1;
+        line-height:1.5;
+        margin-bottom:10px;
+    }
+
+    #wavePanel canvas{
+        width:100%;
+        height:90px;
+        background:#020617;
+        border:1px solid #1e293b;
+        border-radius:10px;
+        margin-bottom:10px;
+    }
+
+    #wavePanel button, #wavePanel a.waveBtn{
+        display:inline-block;
+        background:#1d4ed8;
+        color:white;
+        border:none;
+        padding:7px 10px;
+        border-radius:8px;
+        font-size:12px;
+        cursor:pointer;
+        text-decoration:none;
+        margin-right:6px;
+        margin-top:4px;
+    }
+
+    #wavePanel button:hover, #wavePanel a.waveBtn:hover{
+        background:#2563eb;
+    }
+
+    #wavePanel .closeWave{
+        float:right;
+        background:#334155;
+    }
+
+    .wavePopupBtn{
+        display:inline-block;
+        margin-top:8px;
+        padding:6px 8px;
+        background:#1d4ed8;
+        color:white !important;
+        border-radius:6px;
+        text-decoration:none;
+        font-size:12px;
+        cursor:pointer;
+    }
+
+
+    .activityMeter{
+        width:100%;
+        height:8px;
+        background:#020617;
+        border:1px solid #1e293b;
+        border-radius:999px;
+        overflow:hidden;
+        margin-top:6px;
+    }
+
+    .activityFill{
+        height:100%;
+        width:0%;
+        background:#60a5fa;
+    }
+
+    .stationHzBadge{
+        display:inline-block;
+        padding:2px 6px;
+        border-radius:999px;
+        background:#172554;
+        color:#93c5fd;
+        font-size:11px;
+        margin-top:4px;
+    }
+
+    #tsunamiPanel{
+        position:fixed;
+        top:80px;
+        right:20px;
+        width:400px;
+        max-width:calc(100vw - 40px);
+        background:#0f172a;
+        border:2px solid #334155;
+        border-radius:14px;
+        padding:16px;
+        z-index:1001;
+        box-shadow:0 20px 50px rgba(0,0,0,0.5);
+        font-size:13px;
+        max-height:70vh;
+        overflow-y:auto;
+        display:none;
+    }
+
+    #tsunamiPanel.active{
+        display:block;
+        animation:slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn{
+        from{
+            opacity:0;
+            transform:translateX(20px);
+        }
+        to{
+            opacity:1;
+            transform:translateX(0);
+        }
+    }
+
+    .tsunami-header{
+        border-left:4px solid;
+        padding:12px;
+        background:rgba(100,100,100,0.1);
+        border-radius:8px;
+        margin-bottom:12px;
+    }
+
+    .tsunami-header h3{
+        margin:0 0 8px 0;
+        font-size:16px;
+        color:#60a5fa;
+    }
+
+    .tsunami-header .warning-description{
+        font-size:14px;
+        font-weight:bold;
+        margin-bottom:4px;
+    }
+
+    .tsunami-info{
+        font-size:12px;
+        color:#cbd5e1;
+        line-height:1.6;
+    }
+
+    .tsunami-info p{
+        margin:6px 0;
+    }
+
+    .warning-entry{
+        background:#111827;
+        border:1px solid #1f2937;
+        border-radius:8px;
+        padding:10px;
+        margin:8px 0;
+    }
+
+    .warning-entry.highest{
+        border-color:#dc2626;
+        background:rgba(220,38,38,0.1);
+    }
+
+    .warning-region{
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        margin-bottom:8px;
+        font-weight:bold;
+    }
+
+    .warning-badge{
+        display:inline-block;
+        padding:4px 8px;
+        border-radius:6px;
+        font-size:10px;
+        color:white;
+        font-weight:bold;
+    }
+
+    .warning-details{
+        font-size:11px;
+        color:#94a3b8;
+    }
+
+    .warning-details div{
+        margin:4px 0;
+    }
+
+    .tsunami-close-btn{
+        float:right;
+        background:#334155;
+        color:white;
+        border:none;
+        padding:6px 10px;
+        border-radius:6px;
+        cursor:pointer;
+        font-size:12px;
+    }
+
+    .tsunami-close-btn:hover{
+        background:#475569;
+    }
+
+</style>
+</head>
+<body>
+
+<div id="topbar">
+    <h1>🌍 OpenSeismo Lite</h1>
+
+    <div id="disclaimer">
+        Unofficial seismic information dashboard. Real public-source data only.
+        Refer to official agencies like USGS, EMSC/CSEM, GeoNet, INGV, GFZ, JMA or your local authorities.
+    </div>
+</div>
+
+<div id="container">
+
+    <div id="sidebar">
+
+        <div class="controls">
+            <label>Minimum Magnitude: <span id="magValue">3</span>+</label>
+            <input type="range" min="1" max="8" step="0.1" value="3" id="magSlider">
+
+            <label class="small" for="rangeSelect">Historical range</label>
+            <select id="rangeSelect">
+                <option value="30">Last 1 month</option>
+                <option value="90">Last 3 months</option>
+                <option value="180" selected>Last 6 months</option>
+            </select>
+
+            <label class="small" style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                <input type="checkbox" id="stationToggle" style="width:auto;">
+                Show seismic stations
+            </label>
+
+            <label class="small" for="stationMode">Station mode</label>
+            <select id="stationMode">
+                <option value="active" selected>Active stations only</option>
+                <option value="historical">Historical/closed stations only</option>
+                <option value="all">All stations</option>
+            </select>
+
+            <button id="refreshBtn">Refresh real data</button>
+            <button id="stationBtn">Load stations</button>
+        </div>
+
+        <div id="dateRange">
+            Loading real earthquake feeds...
+        </div>
+
+        <div id="sourceStatus" class="statusBox">
+            Source status will appear here.
+        </div>
+
+        <div id="quakeList">
+            Loading earthquake feed...
+        </div>
+
+        <div class="legend">
+            <div><span class="dot" style="background:#22c55e;"></span> M1 - M3.9</div>
+            <div><span class="dot" style="background:#facc15;"></span> M4 - M5.9</div>
+            <div><span class="dot" style="background:#f97316;"></span> M6 - M6.9</div>
+            <div><span class="dot" style="background:#ef4444;"></span> M7+</div>
+        </div>
+
+        <div class="footer">
+            Features:
+            <br>• Multi-source real seismic data
+            <br>• USGS 6-month global backbone
+            <br>• EMSC/CSEM global feed
+            <br>• GeoNet New Zealand feed
+            <br>• INGV Italy feed where browser access allows
+            <br>• GFZ/GEOFON feed where browser access allows
+            <br>• Active-only seismic station layer from FDSN station services
+            <br>• Static Georgian station fallback from IliaUni public station list
+            <br>• Station waveform/audio preview and source links
+            <br>• Station sample-rate Hz display where channel metadata exposes it
+            <br>• Nearby real-catalog station activity meter
+            <br>• Magnitude filtering
+            <br>• Offline cache support
+            <br><br>
+            Credit: Georgian station metadata references publicly available information from Ilia State University / Institute of Earth Sciences and National Seismic Monitoring Center.
+            <br><br>
+            Note: Not affiliated with or endorsed by Ilia State University. Some agencies may block browser requests with CORS. The app will keep working with sources that respond.
+        
+<div style="
+    margin-top:20px;
+    padding:10px;
+    background:#111827;
+    border-radius:8px;
+    font-size:12px;
+    line-height:1.6;
+    color:#94a3b8;
+">
+    <b>Data Sources & Credits</b><br><br>
+
+    Earthquake data:
+    <br>• USGS Earthquake Hazards Program
+    <br>• EMSC / CSEM
+    <br>• GeoNet New Zealand
+    <br>• INGV Italy
+    <br>• GFZ / GEOFON
+    <br>• JMA Japan Meteorological Agency (where available through aggregated feeds)
+
+    <br><br>
+
+    Seismic station metadata:
+    <br>• IRIS / SAGE
+    <br>• FDSN Station Services
+    <br>• Ilia State University / Institute of Earth Sciences and National Seismic Monitoring Center (Georgia GO network)
+
+    <br><br>
+
+    This application is unofficial and not affiliated with any listed institution or agency.
+    Always refer to official agencies for emergency information and warnings.
+</div>
+</div>
+
+    </div>
+
+    <div id="map"></div>
+
+<div id="wavePanel">
+    <button class="closeWave" onclick="closeWavePanel()">Close</button>
+    <h3>Station Waveform / Audio</h3>
+    <div id="waveStationTitle" class="waveText">Select a station to preview waveform options.</div>
+    <canvas id="waveCanvas" width="640" height="160"></canvas>
+    <div class="waveText">
+        Educational station sonification preview. Seismic stations measure ground motion, not airborne sound. Hz values are metadata sample rates where exposed. Activity score is based on nearby real catalog events, not live raw waveform amplitude.
+    </div>
+    <button onclick="playStationSonification()">Play sonification</button>
+    <button onclick="stopStationSonification()">Stop</button>
+    <a id="waveDataLink" class="waveBtn" href="#" target="_blank" rel="noopener">Open waveform/data source</a>
+</div>
+
+<div id="tsunamiPanel">
+    <button class="tsunami-close-btn" onclick="closeTsunamiPanel()">Close</button>
+    <div id="tsunamiPanelContent">
+        <!-- Tsunami warning content will be inserted here -->
+    </div>
+</div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+/**
+ * Tsunami Warning System - JMA-inspired
+ * Calculates tsunami warnings based on earthquake parameters
+ */
+class TsunamiWarningSystem {
+    static COASTAL_REGIONS = {
+        "Pacific": {
+            "regions": [
+                {"name": "Japan", "lat": 36.0, "lon": 138.0, "radius": 200},
+                {"name": "Indonesia", "lat": -2.0, "lon": 113.0, "radius": 250},
+                {"name": "Philippines", "lat": 12.0, "lon": 122.0, "radius": 200},
+                {"name": "New Zealand", "lat": -41.0, "lon": 174.0, "radius": 200},
+                {"name": "US West Coast", "lat": 40.0, "lon": -125.0, "radius": 200},
+                {"name": "Chile", "lat": -30.0, "lon": -72.0, "radius": 200},
+                {"name": "Thailand", "lat": 8.0, "lon": 100.5, "radius": 150},
+            ]
+        }
+    };
+
+    static WAVE_HEIGHT_THRESHOLDS = {
+        "MAJOR_WARNING": 3.0,
+        "WARNING": 1.0,
+        "ADVISORY": 0.5,
+        "NO_WARNING": 0.0,
+    };
+
+    static haversineDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const lat1Rad = lat1 * Math.PI / 180;
+        const lat2Rad = lat2 * Math.PI / 180;
+        const deltaLat = (lat2 - lat1) * Math.PI / 180;
+        const deltaLon = (lon2 - lon1) * Math.PI / 180;
+
+        const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+                  Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+                  Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+
+        const c = 2 * Math.asin(Math.sqrt(a));
+        return R * c;
+    }
+
+    static estimateWaveHeight(magnitude, depthKm, distanceToCoastKm) {
+        if (magnitude < 6.5) return 0.0;
+
+        const depthFactor = Math.max(0.1, 1.0 - (depthKm / 700.0));
+        const distanceFactor = Math.max(0.1, 1.0 / (1.0 + (distanceToCoastKm / 200.0)));
+        const baseHeight = (magnitude - 6.5) * 0.8 + 0.5;
+        const estimatedHeight = baseHeight * depthFactor * distanceFactor;
+
+        return Math.max(0.0, estimatedHeight);
+    }
+
+    static calculateArrivalTime(distanceToCoastKm) {
+        if (distanceToCoastKm <= 0) return 0;
+        const speedKmh = 800;
+        const timeHours = distanceToCoastKm / speedKmh;
+        const timeMinutes = timeHours * 60;
+        return Math.max(1, Math.round(timeMinutes));
+    }
+
+    static getWarningLevel(waveHeight) {
+        if (waveHeight >= this.WAVE_HEIGHT_THRESHOLDS.MAJOR_WARNING) return "MAJOR_WARNING";
+        if (waveHeight >= this.WAVE_HEIGHT_THRESHOLDS.WARNING) return "WARNING";
+        if (waveHeight >= this.WAVE_HEIGHT_THRESHOLDS.ADVISORY) return "ADVISORY";
+        return "NO_WARNING";
+    }
+
+    static getWarningColor(warningLevel) {
+        const colors = {
+            "MAJOR_WARNING": "#DC2626",
+            "WARNING": "#EA580C",
+            "ADVISORY": "#F59E0B",
+            "NO_WARNING": "#10B981"
+        };
+        return colors[warningLevel] || "#6B7280";
+    }
+
+    static getWarningDescription(warningLevel) {
+        const descriptions = {
+            "MAJOR_WARNING": "🚨 MAJOR TSUNAMI WARNING - Expect destructive waves",
+            "WARNING": "⚠️ TSUNAMI WARNING - Dangerous waves expected",
+            "ADVISORY": "ℹ️ TSUNAMI ADVISORY - Minor waves may occur",
+            "NO_WARNING": "✓ No tsunami threat detected"
+        };
+        return descriptions[warningLevel] || "Unknown";
+    }
+
+    static evaluateEarthquake(magnitude, depthKm, latitude, longitude) {
+        if (magnitude < 6.5) {
+            return {
+                has_risk: false,
+                warnings: [],
+                magnitude: magnitude,
+                depth_km: depthKm,
+                epicenter: { lat: latitude, lon: longitude },
+                note: `Magnitude ${magnitude} - Below tsunami threshold`
+            };
+        }
+
+        const warnings = [];
+
+        for (const [regionType, regionData] of Object.entries(this.COASTAL_REGIONS)) {
+            for (const region of regionData.regions) {
+                const distance = this.haversineDistance(
+                    latitude, longitude,
+                    region.lat, region.lon
+                );
+
+                if (distance <= region.radius * 3) {
+                    const waveHeight = this.estimateWaveHeight(
+                        magnitude,
+                        depthKm,
+                        Math.max(0, distance - region.radius)
+                    );
+
+                    const warningLevel = this.getWarningLevel(waveHeight);
+
+                    if (warningLevel !== "NO_WARNING") {
+                        const arrivalTime = this.calculateArrivalTime(distance);
+                        const hours = Math.floor(arrivalTime / 60);
+                        const minutes = arrivalTime % 60;
+                        const arrivalTimeFormatted = hours > 0 ? 
+                            `${hours}h ${minutes}m` : `${minutes}m`;
+
+                        warnings.push({
+                            region: region.name,
+                            distance_km: Math.round(distance * 10) / 10,
+                            wave_height_m: Math.round(waveHeight * 100) / 100,
+                            warning_level: warningLevel,
+                            warning_level_value: Object.keys(this.WAVE_HEIGHT_THRESHOLDS).indexOf(warningLevel),
+                            arrival_time_minutes: arrivalTime,
+                            arrival_time_formatted: arrivalTimeFormatted,
+                            lat: region.lat,
+                            lon: region.lon
+                        });
+                    }
+                }
+            }
+        }
+
+        return {
+            has_risk: warnings.length > 0,
+            warnings: warnings.sort((a, b) => b.warning_level_value - a.warning_level_value),
+            magnitude: magnitude,
+            depth_km: depthKm,
+            epicenter: { lat: latitude, lon: longitude }
+        };
+    }
+}
+
+/**
+ * Tsunami Warning Display Handler
+ */
+let tsunamiWarningMarkers = [];
+
+function displayTsunamiWarning(tsunamiData) {
+    const panel = document.getElementById("tsunamiPanel");
+    const content = document.getElementById("tsunamiPanelContent");
+
+    if (!tsunamiData.has_risk) {
+        content.innerHTML = `
+            <div class="tsunami-header" style="border-color: ${TsunamiWarningSystem.getWarningColor('NO_WARNING')}">
+                <h3>Tsunami Assessment</h3>
+                <div class="warning-description" style="color: ${TsunamiWarningSystem.getWarningColor('NO_WARNING')}">
+                    ${TsunamiWarningSystem.getWarningDescription('NO_WARNING')}
+                </div>
+            </div>
+            <div class="tsunami-info">
+                <p><strong>Earthquake:</strong> M${tsunamiData.magnitude.toFixed(1)} at ${tsunamiData.depth_km}km depth</p>
+                <p>No significant tsunami threat detected for monitored regions.</p>
+            </div>
+        `;
+    } else {
+        let warningsList = '';
+        const highestLevel = Math.max(...tsunamiData.warnings.map(w => w.warning_level_value));
+
+        for (const warning of tsunamiData.warnings) {
+            const isHighest = warning.warning_level_value === highestLevel;
+            const warningColor = TsunamiWarningSystem.getWarningColor(warning.warning_level);
+            
+            warningsList += `
+                <div class="warning-entry ${isHighest ? 'highest' : ''}">
+                    <div class="warning-region">
+                        <strong>${warning.region}</strong>
+                        <span class="warning-badge" style="background: ${warningColor}">
+                            ${warning.warning_level.replace(/_/g, ' ')}
+                        </span>
+                    </div>
+                    <div class="warning-details">
+                        <div>📏 Distance: ${warning.distance_km} km</div>
+                        <div>🌊 Wave height: ${warning.wave_height_m}m</div>
+                        <div>⏱️ Arrival: ${warning.arrival_time_formatted}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        const maxWarning = tsunamiData.warnings[0];
+        const warningColor = TsunamiWarningSystem.getWarningColor(maxWarning.warning_level);
+
+        content.innerHTML = `
+            <div class="tsunami-header" style="border-color: ${warningColor}; background: ${warningColor}22;">
+                <h3>Tsunami Alert</h3>
+                <div class="warning-description" style="color: ${warningColor}">
+                    ${TsunamiWarningSystem.getWarningDescription(maxWarning.warning_level)}
+                </div>
+            </div>
+            <div class="tsunami-info">
+                <p><strong>Earthquake:</strong> M${tsunamiData.magnitude.toFixed(1)} at ${tsunamiData.depth_km}km depth</p>
+                <p><strong>Affected Regions:</strong></p>
+                ${warningsList}
+                <p style="margin-top: 12px; font-size: 11px; color: #64748b;">
+                    ⚠️ This is an educational system estimate. Always refer to official tsunami warning agencies (PTWC, JMA, etc.) for emergency decisions.
+                </p>
+            </div>
+        `;
+    }
+
+    panel.classList.add("active");
+}
+
+function closeTsunamiPanel() {
+    const panel = document.getElementById("tsunamiPanel");
+    panel.classList.remove("active");
+    clearTsunamiMarkers();
+}
+
+function clearTsunamiMarkers() {
+    tsunamiWarningMarkers.forEach(marker => {
+        try { map.removeLayer(marker); } catch(e) {}
+    });
+    tsunamiWarningMarkers = [];
+}
+
+function showTsunamiWarning(quake) {
+    const mag = quake.properties.mag || 0;
+    const depth = quake.geometry.coordinates[2] || 0;
+    const lat = quake.geometry.coordinates[1];
+    const lon = quake.geometry.coordinates[0];
+
+    const tsunamiData = TsunamiWarningSystem.evaluateEarthquake(mag, depth, lat, lon);
+
+    clearTsunamiMarkers();
+    displayTsunamiWarning(tsunamiData);
+
+    // Add visualization circles for affected regions
+    if (tsunamiData.has_risk) {
+        for (const warning of tsunamiData.warnings) {
+            const circle = L.circle(
+                [warning.lat, warning.lon],
+                {
+                    radius: Math.max(warning.distance_km * 1000, 100000),
+                    color: TsunamiWarningSystem.getWarningColor(warning.warning_level),
+                    weight: 2,
+                    opacity: 0.3,
+                    fillColor: TsunamiWarningSystem.getWarningColor(warning.warning_level),
+                    fillOpacity: 0.1
+                }
+            ).addTo(map);
+
+            tsunamiWarningMarkers.push(circle);
+        }
+
+        // Add epicenter marker
+        const epicenterMarker = L.circleMarker([lat, lon], {
+            radius: 8,
+            color: "#FF0000",
+            fillColor: "#FF6666",
+            fillOpacity: 0.8,
+            weight: 2
+        }).bindPopup(`
+            <b>Earthquake Epicenter</b><br>
+            M${mag.toFixed(1)}<br>
+            Depth: ${depth}km<br>
+            <small>Click 'X' on tsunami panel to close</small>
+        `).addTo(map);
+
+        tsunamiWarningMarkers.push(epicenterMarker);
+    }
+}
+
+const map = L.map('map').setView([20,0], 2);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© CartoDB',
+    maxZoom: 20
+}).addTo(map);
+
+const quakeList = document.getElementById("quakeList");
+const slider = document.getElementById("magSlider");
+const magValue = document.getElementById("magValue");
+const rangeSelect = document.getElementById("rangeSelect");
+const refreshBtn = document.getElementById("refreshBtn");
+const stationToggle = document.getElementById("stationToggle");
+const stationMode = document.getElementById("stationMode");
+const stationBtn = document.getElementById("stationBtn");
+const dateRange = document.getElementById("dateRange");
+const sourceStatus = document.getElementById("sourceStatus");
+
+let markers = [];
+let stationMarkers = [];
+let earthquakeData = [];
+let stationData = [];
+let selectedWaveStation = null;
+let audioCtx = null;
+let oscillator = null;
+let gainNode = null;
+let sourceReport = [];
+
+slider.addEventListener("input", () => {
+    magValue.innerText = Number(slider.value).toFixed(1).replace(".0", "");
+    fetchEarthquakes();
+});
+
+rangeSelect.addEventListener("change", fetchEarthquakes);
+refreshBtn.addEventListener("click", fetchEarthquakes);
+stationBtn.addEventListener("click", loadStations);
+stationToggle.addEventListener("change", () => {
+    if(stationToggle.checked){
+        if(stationData.length === 0){
+            loadStations();
+        } else {
+            renderStations();
+        }
+    } else {
+        clearStationMarkers();
+    }
+});
+
+stationMode.addEventListener("change", () => {
+    if(stationToggle.checked){
+        renderStations();
+    }
+});
+
+function getColor(mag){
+    if(mag >= 7) return "#ef4444";
+    if(mag >= 6) return "#f97316";
+    if(mag >= 4) return "#facc15";
+    return "#22c55e";
+}
+
+function getDateWindow(){
+    const now = new Date();
+    const daysBack = Number(rangeSelect.value);
+    const start = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
+
+    return {
+        start,
+        end: now,
+        startDate: start.toISOString().split("T")[0],
+        endDate: now.toISOString().split("T")[0],
+        minMag: Number(slider.value)
+    };
+}
+
+function cleanNumber(value, fallback = 0){
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+}
+
+function normalizeFeature(feature, sourceName){
+    if(!feature || !feature.geometry || !feature.geometry.coordinates) return null;
+
+    const p = feature.properties || {};
+    const c = feature.geometry.coordinates;
+
+    const mag = cleanNumber(
+        p.mag ?? p.magnitude ?? p.magMw ?? p.value,
+        0
+    );
+
+    let rawTime = p.time ?? p.origin_time ?? p.datetime ?? p.date;
+    let time = typeof rawTime === "number" ? rawTime : new Date(rawTime).getTime();
+
+    if(!Number.isFinite(time)) return null;
+
+    const lon = cleanNumber(c[0], null);
+    const lat = cleanNumber(c[1], null);
+    const depth = cleanNumber(c[2] ?? p.depth, 0);
+
+    if(lon === null || lat === null) return null;
+
+    const place =
+        p.place ||
+        p.flynn_region ||
+        p.locality ||
+        p.region ||
+        p.description ||
+        "Unknown location";
+
+    return {
+        type: "Feature",
+        properties: {
+            mag,
+            place,
+            time,
+            depth,
+            source: sourceName,
+            id: p.id || p.publicID || feature.id || `${sourceName}-${time}-${lat.toFixed(3)}-${lon.toFixed(3)}`
+        },
+        geometry: {
+            type: "Point",
+            coordinates: [lon, lat, depth]
+        }
+    };
+}
+
+function dedupeEvents(events){
+    const seen = new Set();
+    const result = [];
+
+    for(const event of events){
+        if(!event) continue;
+
+        const p = event.properties;
+        const c = event.geometry.coordinates;
+
+        // Loose duplicate key: source + close time + rounded coordinates + magnitude.
+        const key = [
+            p.source,
+            Math.round(p.time / 60000),
+            Math.round(c[0] * 10) / 10,
+            Math.round(c[1] * 10) / 10,
+            Math.round(p.mag * 10) / 10
+        ].join("|");
+
+        if(!seen.has(key)){
+            seen.add(key);
+            result.push(event);
+        }
+    }
+
+    return result;
+}
+
+async function fetchJson(url, options = {}){
+    const response = await fetch(url, options);
+    if(!response.ok){
+        throw new Error(`HTTP ${response.status}`);
+    }
+    return response.json();
+}
+
+async function fetchText(url, options = {}){
+    const response = await fetch(url, options);
+    if(!response.ok){
+        throw new Error(`HTTP ${response.status}`);
+    }
+    return response.text();
+}
+
+function normalizeStationEndTime(endTime){
+    if(!endTime) return null;
+
+    const value = String(endTime).trim();
+    if(
+        value === "" ||
+        value.toLowerCase() === "null" ||
+        value.toLowerCase() === "none" ||
+        value.toLowerCase() === "active/unknown" ||
+        value.toLowerCase() === "unknown"
+    ){
+        return null;
+    }
+
+    const parsed = new Date(value);
+    if(Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+}
+
+function isStationActiveToday(station){
+    const end = normalizeStationEndTime(station.endTime);
+
+    // FDSN stations with a blank/null end time are currently open/active.
+    if(end === null) return true;
+
+    return end.getTime() >= Date.now();
+}
+
+function parseFdsnStationText(text, sourceName){
+    const lines = text
+        .split("\n")
+        .map(line => line.trim())
+        .filter(line => line && !line.startsWith("#"));
+
+    const stationMap = new Map();
+
+    for(const line of lines){
+        const parts = line.split("|");
+        if(parts.length < 6) continue;
+
+        let network, station, lat, lon, elevation, site, startTime, rawEndTime, sampleRate;
+
+        // FDSN station-level text:
+        // Network|Station|Latitude|Longitude|Elevation|SiteName|StartTime|EndTime
+        if(parts.length <= 9){
+            network = parts[0];
+            station = parts[1];
+            lat = cleanNumber(parts[2], null);
+            lon = cleanNumber(parts[3], null);
+            elevation = cleanNumber(parts[4], null);
+            site = parts[5] || "Unnamed station";
+            startTime = parts[6] || "Unknown";
+            rawEndTime = parts[7] || "";
+            sampleRate = null;
+        } else {
+            // FDSN channel-level text:
+            // Network|Station|Location|Channel|Latitude|Longitude|Elevation|Depth|Azimuth|Dip|SensorDescription|Scale|ScaleFreq|ScaleUnits|SampleRate|StartTime|EndTime
+            network = parts[0];
+            station = parts[1];
+            const channel = parts[3] || "";
+            lat = cleanNumber(parts[4], null);
+            lon = cleanNumber(parts[5], null);
+            elevation = cleanNumber(parts[6], null);
+            site = `${station} ${channel}`.trim();
+            sampleRate = cleanNumber(parts[14], null);
+            startTime = parts[15] || "Unknown";
+            rawEndTime = parts[16] || "";
+        }
+
+        const endTime = rawEndTime.trim() || "Active";
+
+        if(lat === null || lon === null) continue;
+
+        const key = `${sourceName}|${network}|${station}|${lat.toFixed(3)}|${lon.toFixed(3)}`;
+
+        if(!stationMap.has(key)){
+            const item = {
+                network,
+                station,
+                lat,
+                lon,
+                elevation,
+                site,
+                startTime,
+                endTime,
+                sampleRate,
+                source: sourceName,
+                id: `${sourceName}-${network}-${station}-${lat.toFixed(3)}-${lon.toFixed(3)}`
+            };
+
+            item.active = isStationActiveToday(item);
+            stationMap.set(key, item);
+        } else {
+            // Prefer highest channel sample rate when multiple channels exist.
+            const existing = stationMap.get(key);
+
+            if(sampleRate !== null && (existing.sampleRate === null || existing.sampleRate === undefined || sampleRate > existing.sampleRate)){
+                existing.sampleRate = sampleRate;
+            }
+
+            if(existing.endTime !== "Active" && endTime === "Active"){
+                existing.endTime = "Active";
+                existing.active = true;
+            }
+        }
+    }
+
+    return Array.from(stationMap.values());
+}
+
+function dedupeStations(stations){
+    const seen = new Set();
+    const result = [];
+
+    for(const station of stations){
+        const key = `${station.network}|${station.station}|${Math.round(station.lat * 100) / 100}|${Math.round(station.lon * 100) / 100}`;
+        if(!seen.has(key)){
+            seen.add(key);
+            result.push(station);
+        }
+    }
+
+    return result;
+}
+
+
+// Static Georgian seismic station metadata.
+// Source: Ilia State University / Institute of Earth Sciences and National Seismic Monitoring Center public station page.
+// This is a manually embedded snapshot, not a scraper.
+const GEORGIA_STATIC_STATIONS = [
+    {network:"GO", station:"DGRG", startTime:"2003-08-27", endTime:"Active", site:"დავით გარეჯი / David Gareji", lat:41.5, lon:45.4, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"TBLG", startTime:"2003-10-09", endTime:"Active", site:"თბილისი (დელისი) / Tbilisi (Delisi)", lat:41.7, lon:44.7, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"SEAG", startTime:"2009-04-14", endTime:"Active", site:"თბილისი / Tbilisi", lat:41.8, lon:44.8, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"BGD", startTime:"2009-08-06", endTime:"Active", site:"ნინოწმინდა / Ninotsminda", lat:41.3, lon:43.6, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"BTNK", startTime:"2011-12-27", endTime:"Active", site:"ბოტანიკური ბაღი (თბილისი) / Botanical Garden (Tbilisi)", lat:41.7, lon:44.8, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"KZRT", startTime:"2012-08-24", endTime:"Active", site:"კაზრეთი / Kazreti", lat:41.4, lon:44.4, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"BATM", startTime:"2012-10-11", endTime:"Active", site:"ზემო ახალშენი / Zemo Akhalsheni", lat:41.6, lon:41.7, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"DMNI", startTime:"2013-11-16", endTime:"Active", site:"დმანისი / Dmanisi", lat:41.3, lon:44.2, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"MTEO", startTime:"2014-05-26", endTime:"Active", site:"ბეთლემი-მყინვარწვერი / Betlemi-Mkinvartsveri", lat:42.7, lon:44.5, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"ALIG", startTime:"2016-08-23", endTime:"Active", site:"მცხეთისჯვარი / Mtskhetisjvari", lat:42.1, lon:43.6, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"SHTL", startTime:"2016-09-14", endTime:"Active", site:"შატილი / Shatili", lat:42.7, lon:45.2, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"GHRG", startTime:"2016-10-05", endTime:"Active", site:"ღორჯომი / Ghorjomi", lat:41.7, lon:42.3, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"VSHL", startTime:"2017-06-10", endTime:"Active", site:"ვაშლოვანის დაცული ტერიტორია / Vashlovani Protected Area", lat:41.2, lon:46.4, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"LPNG", startTime:"2018-03-20", endTime:"Active", site:"ლაფანყური / Lapankuri", lat:42.1, lon:45.6, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"KHMG", startTime:"2018-03-28", endTime:"Active", site:"ხამისკური / Khamiskuri", lat:42.4, lon:41.8, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"MUGD", startTime:"2018-06-01", endTime:"Active", site:"მუგუდა / Muguda", lat:42.3, lon:44.6, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"GARI", startTime:"2018-10-26", endTime:"Active", site:"ღარი / Ghari", lat:42.6, lon:43.5, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"LATL", startTime:"2018-11-06", endTime:"Active", site:"ლატალი / Latali", lat:43.0, lon:42.6, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"KHVM", startTime:"2018-11-14", endTime:"Active", site:"ხვამლი / Khvamli", lat:42.5, lon:42.7, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"DDFN", startTime:"2019-10-29", endTime:"Active", site:"დედოფლისწყარო / Dedoplistskaro", lat:41.5, lon:46.1, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"LGDN", startTime:"2019-10-30", endTime:"Active", site:"ლაგოდეხი / Lagodekhi", lat:41.8, lon:46.2, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"AKHN", startTime:"2019-11-04", endTime:"Active", site:"ახალქალაქი / Akhalkalaki", lat:41.4, lon:43.5, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"MZEG", startTime:"2020-11-27", endTime:"Active", site:"მზეთამზე / Mzetamze", lat:41.8, lon:43.5, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"DSHG", startTime:"2021-08-04", endTime:"Active", site:"დუშეთი / Dusheti", lat:42.0, lon:44.7, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"TRLT", startTime:"2021-08-11", endTime:"Active", site:"თრიალეთი / Trialeti", lat:41.6, lon:44.2, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"EMLK", startTime:"2021-09-10", endTime:"Active", site:"ემლიკლი / Emlikli", lat:41.2, lon:44.0, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"CHBG", startTime:"2021-10-16", endTime:"Active", site:"ჭუბერი / Chuberi", lat:43.0, lon:42.1, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"KHRT", startTime:"2021-11-11", endTime:"Active", site:"ხრეიტი / Khreiti", lat:42.4, lon:43.2, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"DALI", startTime:"2022-03-31", endTime:"Active", site:"დალი / Dali", lat:41.2, lon:45.9, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"MTAG", startTime:"2022-04-14", endTime:"Active", site:"მატანი / Matani", lat:42.1, lon:45.2, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"KHAR", startTime:"2022-07-07", endTime:"Active", site:"ხარაგაული / Kharagauli", lat:42.0, lon:43.1, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"MINA", startTime:"2022-07-13", endTime:"Active", site:"მინაძეები / Minadzeebi", lat:41.6, lon:43.0, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"AZNN", startTime:"2022-08-08", endTime:"Active", site:"აზმანა / Azmana", lat:41.3, lon:43.2, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"SHNK", startTime:"2022-09-30", endTime:"Active", site:"შენაქო / Shenako", lat:42.4, lon:45.7, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"S185", startTime:"2023-02-20", endTime:"Active", site:"სკოლა 185 ვარკეთილი / School 185 Varketili", lat:41.7, lon:44.9, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"S186", startTime:"2023-02-28", endTime:"Active", site:"სკოლა 186 დიდი დიღომი / School 186 Didi Dighomi", lat:41.8, lon:44.8, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"CHRK", startTime:"2023-07-25", endTime:"Active", site:"ჩირუხი / Chirukhi", lat:41.5, lon:42.4, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"LNTK", startTime:"2023-10-18", endTime:"Active", site:"ლენტეხი / Lentekhi", lat:42.8, lon:43.0, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"SHTB", startTime:"2024-03-28", endTime:"Active", site:"ბათუმი შოთას უნივერსიტეტი / Batumi Shota University", lat:41.6, lon:41.6, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"SC07", startTime:"2024-04-24", endTime:"Active", site:"სკოლა 7 თელავი / School 7 Telavi", lat:41.9, lon:45.5, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"CHRN", startTime:"2024-10-31", endTime:"Active", site:"ჩარგალი / Chargali", lat:42.3, lon:44.9, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"JIMT", startTime:"2025-09-16", endTime:"Active", site:"ჯიმითი / Jimiti", lat:41.7, lon:45.7, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"UJRM", startTime:"2025-09-22", endTime:"Active", site:"უჯარმა / Ujarma", lat:41.8, lon:45.1, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"BGNR", startTime:"2025-09-24", endTime:"Active", site:"ბაღნარი / Bagnari", lat:42.1, lon:42.7, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"ATSN", startTime:"2025-09-25", endTime:"Active", site:"აცანა / Atsana", lat:42.1, lon:42.1, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"CHKV", startTime:"2025-09-25", endTime:"Active", site:"ჩქვალერი / Chkvaleri", lat:42.7, lon:42.1, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"ATEN", startTime:"2025-09-30", endTime:"Active", site:"ატენი / Ateni", lat:41.9, lon:44.1, elevation:null, source:"IliaUni Georgia public station list"},
+
+    {network:"GO", station:"URAV", startTime:"2007-08-28", endTime:"2013-03-23", site:"ურავი / Uravi", lat:42.6, lon:43.3, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"SRKG", startTime:"2012-11-16", endTime:"2015-06-10", site:"სარეკი / Sareki", lat:42.3, lon:43.4, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"GANZ", startTime:"2013-10-31", endTime:"2016-04-12", site:"განძანი / Gandzani", lat:41.4, lon:43.7, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"CHVG", startTime:"2004-10-01", endTime:"2017-05-20", site:"ჩქვალერი / Chkvaleri", lat:42.7, lon:42.1, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"BKRG", startTime:"2013-09-29", endTime:"2017-12-22", site:"ბაკურიანი / Bakuriani", lat:41.8, lon:43.5, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"GO08", startTime:"2017-05-19", endTime:"2018-04-21", site:"ჩქვალერი / Chkvaleri", lat:42.7, lon:42.1, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"GO06", startTime:"2017-05-19", endTime:"2018-04-21", site:"აცანა / Atsana", lat:42.1, lon:42.1, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"DDFL", startTime:"2011-11-18", endTime:"2018-10-09", site:"დედოფლისწყარო / Dedoplistskaro", lat:41.4, lon:46.1, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"GO07", startTime:"2017-05-19", endTime:"2018-10-20", site:"გორდი / Gordi", lat:42.5, lon:42.5, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"ONI", startTime:"2004-09-30", endTime:"2018-10-26", site:"ონი / Oni", lat:42.6, lon:43.5, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"BRNG", startTime:"2013-11-01", endTime:"2018-11-01", site:"ბურნაშეთი / Burnasheti", lat:41.6, lon:43.8, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"AZMN", startTime:"2013-11-06", endTime:"2018-11-01", site:"აზმანა / Azmana", lat:41.3, lon:43.3, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"ABS", startTime:"2009-02-24", endTime:"2018-11-09", site:"აბასთუმანი / Abastumani", lat:41.8, lon:42.8, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"GO05", startTime:"2017-05-19", endTime:"2018-11-15", site:"ფერსათი / Persati", lat:42.1, lon:42.8, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"LGD", startTime:"2012-10-17", endTime:"2018-12-17", site:"ლაგოდეხი / Lagodekhi", lat:41.8, lon:46.2, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"GO12", startTime:"2018-10-20", endTime:"2019-04-03", site:"მარტვილი / Martvili", lat:42.4, lon:42.4, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"AKH", startTime:"1977-01-01", endTime:"2019-10-22", site:"ახალქალაქი / Akhalkalaki", lat:41.4, lon:43.5, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"TKB", startTime:"2007-09-18", endTime:"2021-04-19", site:"ტყიბული / Tkibuli", lat:42.4, lon:43.0, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"TRLG", startTime:"2009-07-30", endTime:"2021-09-11", site:"თრიალეთი / Trialeti", lat:41.5, lon:44.1, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"MATA", startTime:"2022-04-14", endTime:"2022-05-20", site:"მატანი / Matani", lat:42.1, lon:45.2, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"GUDG", startTime:"2007-11-13", endTime:"2022-11-11", site:"გუდაური / Gudauri", lat:42.5, lon:44.5, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"GO09", startTime:"2017-05-07", endTime:"2023-08-07", site:"სგურიში / Sgurishi", lat:43.1, lon:42.2, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"GO01", startTime:"2017-06-05", endTime:"2023-08-07", site:"შენაქო / Shenako", lat:42.4, lon:45.7, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"S007", startTime:"2023-03-02", endTime:"2024-04-24", site:"სკოლა 7 თელავი / School 7 Telavi", lat:41.9, lon:45.5, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"CHRG", startTime:"2017-08-04", endTime:"2024-06-06", site:"ჩარგალი / Chargali", lat:42.3, lon:44.9, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"GO04", startTime:"2017-06-12", endTime:"2025-09-12", site:"ატენი / Ateni", lat:41.9, lon:44.1, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"GO02", startTime:"2017-06-08", endTime:"2025-09-16", site:"ჯიმითი / Jimiti", lat:41.7, lon:45.7, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"GO03", startTime:"2017-06-08", endTime:"2025-09-22", site:"უჯარმა / Ujarma", lat:41.8, lon:45.1, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"GO14", startTime:"2018-11-16", endTime:"2025-09-24", site:"ბაღნარი / Bagnari", lat:42.1, lon:42.7, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"GO11", startTime:"2018-04-21", endTime:"2025-09-25", site:"ჩქვალერი / Chkvaleri", lat:42.7, lon:42.1, elevation:null, source:"IliaUni Georgia public station list"},
+    {network:"GO", station:"GO10", startTime:"2018-04-21", endTime:"2025-09-25", site:"აცანა / Atsana", lat:42.1, lon:42.1, elevation:null, source:"IliaUni Georgia public station list"}
+].map((station) => ({
+    ...station,
+    id: `IliaUni-GO-${station.station}-${station.lat.toFixed(3)}-${station.lon.toFixed(3)}`,
+    sampleRate: station.sampleRate ?? null,
+    active: station.endTime === "Active"
+}));
+
+async function loadStations(){
+    stationToggle.checked = true;
+    sourceStatus.innerHTML += `<div class="warn">● Loading station metadata...</div>`;
+
+    // Ask FDSN services for stations active today when possible.
+    // We still parse end dates locally because some providers ignore filters or return old epochs.
+    const today = new Date().toISOString().split("T")[0];
+    const activeEpochFilter = `&startbefore=${today}&endafter=${today}`;
+
+    const stationSources = [
+        {
+            name: "IRIS/SAGE Global",
+            url: "https://service.iris.edu/fdsnws/station/1/query?net=IU,II,GE,G,IC,CU&level=channel&format=text&includecomments=false&nodata=404" + activeEpochFilter
+        },
+        {
+            name: "GeoNet NZ Stations",
+            url: "https://service.geonet.org.nz/fdsnws/station/1/query?network=NZ&level=channel&format=text&includecomments=false&nodata=404" + activeEpochFilter
+        },
+        {
+            name: "GFZ/GEOFON Stations",
+            url: "https://geofon.gfz-potsdam.de/fdsnws/station/1/query?network=GE&level=channel&format=text&includecomments=false&nodata=404" + activeEpochFilter
+        }
+    ];
+
+    const results = await Promise.allSettled(
+        stationSources.map(src =>
+            fetchText(src.url).then(text => ({
+                name: src.name,
+                stations: parseFdsnStationText(text, src.name)
+            }))
+        )
+    );
+
+    let combined = [];
+    let stationStatus = [];
+
+    for(const result of results){
+        if(result.status === "fulfilled"){
+            const activeCount = result.value.stations.filter(isStationActiveToday).length;
+            const closedCount = result.value.stations.length - activeCount;
+            combined = combined.concat(result.value.stations);
+            stationStatus.push(`<div><span class="ok">●</span> ${result.value.name}: ${activeCount} active, ${closedCount} closed/expired hidden by default</div>`);
+        } else {
+            stationStatus.push(`<div><span class="bad">●</span> Station source unavailable or CORS-blocked</div>`);
+        }
+    }
+
+    const georgiaActiveCount = GEORGIA_STATIC_STATIONS.filter(isStationActiveToday).length;
+    const georgiaClosedCount = GEORGIA_STATIC_STATIONS.length - georgiaActiveCount;
+
+    combined = combined.concat(GEORGIA_STATIC_STATIONS);
+
+    stationStatus.push(
+        `<div><span class="ok">●</span> IliaUni Georgia public station list: ${georgiaActiveCount} active, ${georgiaClosedCount} closed/expired hidden by default</div>`
+    );
+
+    stationData = dedupeStations(combined);
+
+    localStorage.setItem("stationCache", JSON.stringify({
+        savedAt: new Date().toISOString(),
+        stations: stationData
+    }));
+
+    if(stationData.length === 0){
+        const cached = localStorage.getItem("stationCache");
+        if(cached){
+            stationData = JSON.parse(cached).stations || [];
+        }
+    }
+
+    renderStations();
+    sourceStatus.innerHTML = renderSourceStatusHtml() + `<hr style="border-color:#334155; margin:8px 0;">` + stationStatus.join("");
+}
+
+function clearStationMarkers(){
+    stationMarkers.forEach(marker => map.removeLayer(marker));
+    stationMarkers = [];
+}
+
+
+
+function stationSampleRateText(station){
+    if(station.sampleRate === null || station.sampleRate === undefined || station.sampleRate === ""){
+        return "Hz: unknown";
+    }
+
+    const hz = Number(station.sampleRate);
+
+    if(Number.isNaN(hz)){
+        return `Hz: ${station.sampleRate}`;
+    }
+
+    return `${hz.toFixed(hz >= 10 ? 0 : 2)} Hz`;
+}
+
+function distanceKm(lat1, lon1, lat2, lon2){
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) *
+        Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+}
+
+function getStationCatalogActivity(station){
+    // Real catalog-based nearby activity estimate.
+    // This is NOT live raw waveform amplitude.
+    if(!earthquakeData || earthquakeData.length === 0){
+        return {
+            score: 0,
+            nearestKm: null,
+            nearbyCount: 0,
+            strongestMag: null
+        };
+    }
+
+    const now = Date.now();
+    const stationLat = Number(station.lat);
+    const stationLon = Number(station.lon);
+
+    let score = 0;
+    let nearbyCount = 0;
+    let nearestKm = null;
+    let strongestMag = null;
+
+    earthquakeData.forEach(q => {
+        if(!q.geometry || !q.geometry.coordinates) return;
+
+        const lon = Number(q.geometry.coordinates[0]);
+        const lat = Number(q.geometry.coordinates[1]);
+        const mag = Number(q.properties.mag || q.properties.magnitude || 0);
+        const time = Number(q.properties.time || 0);
+
+        if(Number.isNaN(lat) || Number.isNaN(lon)) return;
+
+        const km = distanceKm(stationLat, stationLon, lat, lon);
+        if(nearestKm === null || km < nearestKm) nearestKm = km;
+
+        if(km <= 500){
+            nearbyCount++;
+            if(strongestMag === null || mag > strongestMag) strongestMag = mag;
+
+            const ageHours = time ? Math.max(1, (now - time) / 36e5) : 24;
+            const distanceWeight = Math.max(0, 1 - (km / 500));
+            const magWeight = Math.pow(Math.max(mag, 0), 1.6);
+            const timeWeight = Math.max(0.05, Math.exp(-ageHours / 72));
+
+            score += distanceWeight * magWeight * timeWeight;
+        }
+    });
+
+    const normalized = Math.min(100, Math.round(score * 2.5));
+
+    return {
+        score: normalized,
+        nearestKm,
+        nearbyCount,
+        strongestMag
+    };
+}
+
+function activityText(activity){
+    if(activity.score >= 80) return "Very high nearby catalog activity";
+    if(activity.score >= 50) return "High nearby catalog activity";
+    if(activity.score >= 25) return "Moderate nearby catalog activity";
+    if(activity.score >= 5) return "Low nearby catalog activity";
+    return "Quiet / no nearby recent catalog activity";
+}
+
+
+function getStationById(id){
+    return stationData.find(station => station.id === id);
+}
+
+function openWavePanelById(id){
+    const station = getStationById(id);
+    if(station){
+        openWavePanel(station);
+    }
+}
+
+function getStationWaveSource(station){
+    const network = station.network || "";
+    const source = station.source || "";
+
+    if(network === "GO" || source.includes("IliaUni")){
+        return "https://ies.iliauni.edu.ge/?page_id=178";
+    }
+
+    if(source.includes("IRIS") || source.includes("SAGE")){
+        return "https://service.iris.edu/fdsnws/dataselect/1/";
+    }
+
+    if(source.includes("GEOFON") || source.includes("GFZ")){
+        return "https://geofon.gfz-potsdam.de/waveform/";
+    }
+
+    if(source.includes("GeoNet")){
+        return "https://www.geonet.org.nz/data/tools";
+    }
+
+    return "https://www.fdsn.org/webservices/";
+}
+
+function drawStationWaveformPreview(station){
+    const canvas = document.getElementById("waveCanvas");
+    const ctx = canvas.getContext("2d");
+    const w = canvas.width;
+    const h = canvas.height;
+
+    ctx.clearRect(0, 0, w, h);
+
+    ctx.strokeStyle = "#1e293b";
+    ctx.lineWidth = 1;
+
+    for(let y = 20; y < h; y += 20){
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+    }
+
+    const seedText = `${station.network || ""}${station.station || ""}${station.lat || 0}${station.lon || 0}`;
+    let seed = 0;
+
+    for(let i = 0; i < seedText.length; i++){
+        seed += seedText.charCodeAt(i);
+    }
+
+    ctx.strokeStyle = "#60a5fa";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+
+    for(let x = 0; x < w; x++){
+        const t = x / w;
+        const base = Math.sin(t * Math.PI * 14 + seed * 0.01);
+        const tremor = Math.sin(t * Math.PI * 43 + seed * 0.03) * 0.35;
+        const micro = Math.sin(t * Math.PI * 91 + seed * 0.07) * 0.15;
+        const envelope = 0.25 + 0.75 * Math.sin(t * Math.PI);
+        const y = h / 2 + (base + tremor + micro) * envelope * 32;
+
+        if(x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+
+    ctx.stroke();
+
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "12px Arial";
+    ctx.fillText("Preview waveform / sonification — not raw live station audio", 12, h - 12);
+}
+
+function openWavePanel(station){
+    selectedWaveStation = station;
+
+    const panel = document.getElementById("wavePanel");
+    const title = document.getElementById("waveStationTitle");
+    const link = document.getElementById("waveDataLink");
+
+    title.innerHTML = `
+        <b>${station.network || "?"}.${station.station || "?"}</b><br>
+        ${station.site || "Unknown station"}<br>
+        Source: ${station.source || "Station metadata source"}<br>
+        Sample rate: ${stationSampleRateText(station)}<br>
+        Catalog activity estimate: ${getStationCatalogActivity(station).score}/100<br>
+        Status: ${isStationActiveToday(station) ? "Active" : "Closed / historical"}
+    `;
+
+    link.href = getStationWaveSource(station);
+
+    drawStationWaveformPreview(station);
+    panel.style.display = "block";
+}
+
+function closeWavePanel(){
+    stopStationSonification();
+    document.getElementById("wavePanel").style.display = "none";
+}
+
+function playStationSonification(){
+    if(!selectedWaveStation) return;
+
+    stopStationSonification();
+
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    oscillator = audioCtx.createOscillator();
+    gainNode = audioCtx.createGain();
+
+    const lat = Math.abs(Number(selectedWaveStation.lat || 0));
+    const lon = Math.abs(Number(selectedWaveStation.lon || 0));
+    const freq = 120 + ((lat + lon) % 300);
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+    gainNode.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.08, audioCtx.currentTime + 0.05);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    oscillator.start();
+
+    const pulse = setInterval(() => {
+        if(!audioCtx || !gainNode){
+            clearInterval(pulse);
+            return;
+        }
+
+        const now = audioCtx.currentTime;
+        gainNode.gain.cancelScheduledValues(now);
+        gainNode.gain.setValueAtTime(0.03, now);
+        gainNode.gain.linearRampToValueAtTime(0.09, now + 0.08);
+        gainNode.gain.linearRampToValueAtTime(0.025, now + 0.35);
+    }, 450);
+
+    oscillator._pulse = pulse;
+}
+
+function stopStationSonification(){
+    if(oscillator){
+        if(oscillator._pulse) clearInterval(oscillator._pulse);
+        try { oscillator.stop(); } catch(e) {}
+        oscillator.disconnect();
+        oscillator = null;
+    }
+
+    if(gainNode){
+        gainNode.disconnect();
+        gainNode = null;
+    }
+
+    if(audioCtx){
+        audioCtx.close();
+        audioCtx = null;
+    }
+}
+
+
+function renderStations(){
+    clearStationMarkers();
+
+    if(!stationToggle.checked) return;
+
+    const mode = stationMode.value || "active";
+
+    let filteredStations = stationData;
+    if(mode === "active"){
+        filteredStations = stationData.filter(isStationActiveToday);
+    } else if(mode === "historical"){
+        filteredStations = stationData.filter(station => !isStationActiveToday(station));
+    }
+
+    const maxStations = 1500;
+    const visibleStations = filteredStations.slice(0, maxStations);
+
+    visibleStations.forEach(station => {
+        const active = isStationActiveToday(station);
+        const markerColor = active ? "#38bdf8" : "#64748b";
+        const statusText = active ? "ACTIVE" : "CLOSED / HISTORICAL";
+
+        const marker = L.circleMarker([station.lat, station.lon], {
+            radius: active ? 3 : 2.5,
+            color: markerColor,
+            fillColor: markerColor,
+            fillOpacity: active ? 0.85 : 0.45,
+            weight: 1
+        }).addTo(map);
+
+        const activity = getStationCatalogActivity(station);
+        const nearestText = activity.nearestKm === null ? "No catalog events loaded" : `${Math.round(activity.nearestKm)} km nearest loaded event`;
+
+        marker.bindPopup(`
+            <b>${station.network}.${station.station}</b><br>
+            ${station.site}<br>
+            Status: <b>${statusText}</b><br>
+            <span class="stationHzBadge">${stationSampleRateText(station)}</span><br>
+            Catalog activity: <b>${activity.score}/100</b><br>
+            ${activityText(activity)}<br>
+            Nearby loaded events within 500 km: ${activity.nearbyCount}<br>
+            ${nearestText}<br>
+            Elevation: ${station.elevation ?? "Unknown"} m<br>
+            Source: ${station.source}<br>
+            Start: ${station.startTime}<br>
+            End: ${station.endTime}<br>
+            <div class="activityMeter"><div class="activityFill" style="width:${activity.score}%"></div></div>
+            <a class="wavePopupBtn" onclick="openWavePanelById('${station.id}')">Waveform / audio preview</a>
+        `);
+
+        stationMarkers.push(marker);
+    });
+
+    const hiddenCount = Math.max(filteredStations.length - visibleStations.length, 0);
+    const activeCount = stationData.filter(isStationActiveToday).length;
+    const closedCount = stationData.length - activeCount;
+    const modeLabel = mode === "active" ? "active only" : mode === "historical" ? "historical/closed only" : "all";
+
+    sourceStatus.innerHTML = renderSourceStatusHtml() +
+        `<hr style="border-color:#334155; margin:8px 0;">` +
+        `<div><span class="ok">●</span> Station mode: ${modeLabel}</div>` +
+        `<div>Active stations: ${activeCount} | Closed/historical: ${closedCount}</div>` +
+        (hiddenCount > 0 ? `<div class="warn">Showing first ${maxStations}; ${hiddenCount} hidden for browser performance.</div>` : "");
+}
+
+function renderSourceStatusHtml(){
+    return sourceReport.map(source => {
+        if(source.ok){
+            return `<div><span class="ok">●</span> ${source.name}: ${source.count} events</div>`;
+        }
+        return `<div><span class="bad">●</span> ${source.name}: unavailable</div>`;
+    }).join("") || "No source status available.";
+}
+
+async function loadUSGS(windowData){
+    const url =
+        "https://earthquake.usgs.gov/fdsnws/event/1/query" +
+        "?format=geojson" +
+        "&starttime=" + windowData.startDate +
+        "&endtime=" + windowData.endDate +
+        "&minmagnitude=" + windowData.minMag +
+        "&orderby=time";
+
+    const json = await fetchJson(url);
+    return (json.features || []).map(f => normalizeFeature(f, "USGS")).filter(Boolean);
+}
+
+async function loadEMSC(windowData){
+    const url =
+        "https://www.seismicportal.eu/fdsnws/event/1/query" +
+        "?format=json" +
+        "&starttime=" + windowData.startDate +
+        "&endtime=" + windowData.endDate +
+        "&minmagnitude=" + windowData.minMag +
+        "&limit=2000" +
+        "&orderby=time";
+
+    const json = await fetchJson(url);
+    return (json.features || []).map(f => normalizeFeature(f, "EMSC/CSEM")).filter(Boolean);
+}
+
+async function loadGeoNet(windowData){
+    // GeoNet's public quake endpoint returns NZ quakes up to 365 days, max 100.
+    // MMI=-1 includes very small events too, then we filter by magnitude/date locally.
+    const json = await fetchJson("https://api.geonet.org.nz/quake?MMI=-1", {
+        headers: { "Accept": "application/vnd.geo+json;version=2" }
+    });
+
+    return (json.features || [])
+        .map(f => normalizeFeature(f, "GeoNet NZ"))
+        .filter(Boolean)
+        .filter(f =>
+            f.properties.time >= windowData.start.getTime() &&
+            f.properties.time <= windowData.end.getTime() &&
+            f.properties.mag >= windowData.minMag
+        );
+}
+
+async function loadINGV(windowData){
+    const url =
+        "https://webservices.ingv.it/fdsnws/event/1/query" +
+        "?format=geojson" +
+        "&starttime=" + windowData.startDate +
+        "&endtime=" + windowData.endDate +
+        "&minmag=" + windowData.minMag +
+        "&orderby=time";
+
+    const json = await fetchJson(url);
+    return (json.features || []).map(f => normalizeFeature(f, "INGV Italy")).filter(Boolean);
+}
+
+async function loadGFZ(windowData){
+    const url =
+        "https://geofon.gfz-potsdam.de/fdsnws/event/1/query" +
+        "?format=geojson" +
+        "&starttime=" + windowData.startDate +
+        "&endtime=" + windowData.endDate +
+        "&minmag=" + windowData.minMag +
+        "&orderby=time";
+
+    const json = await fetchJson(url);
+    return (json.features || []).map(f => normalizeFeature(f, "GFZ/GEOFON")).filter(Boolean);
+}
+
+async function fetchEarthquakes(){
+
+    quakeList.innerHTML = "Loading multi-source real earthquake data...";
+    dateRange.innerHTML = "Fetching sources...";
+    sourceStatus.innerHTML = "Checking USGS, EMSC/CSEM, GeoNet, INGV, and GFZ/GEOFON...";
+
+    const windowData = getDateWindow();
+
+    const loaders = [
+        ["USGS", loadUSGS],
+        ["EMSC/CSEM", loadEMSC],
+        ["GeoNet NZ", loadGeoNet],
+        ["INGV Italy", loadINGV],
+        ["GFZ/GEOFON", loadGFZ]
+    ];
+
+    const results = await Promise.allSettled(
+        loaders.map(([name, loader]) =>
+            loader(windowData).then(events => ({ name, events }))
+        )
+    );
+
+    let combined = [];
+    sourceReport = [];
+
+    for(const result of results){
+        if(result.status === "fulfilled"){
+            combined = combined.concat(result.value.events);
+            sourceReport.push({
+                name: result.value.name,
+                count: result.value.events.length,
+                ok: true
+            });
+        } else {
+            sourceReport.push({
+                name: "Source",
+                count: 0,
+                ok: false,
+                error: result.reason?.message || "Blocked or unavailable"
+            });
+        }
+    }
+
+    combined = dedupeEvents(combined).sort((a, b) => b.properties.time - a.properties.time);
+
+    if(combined.length > 0){
+        earthquakeData = combined;
+
+        localStorage.setItem(
+            "quakeCache",
+            JSON.stringify({
+                savedAt: new Date().toISOString(),
+                events: earthquakeData,
+                sourceReport
+            })
+        );
+
+        renderEarthquakes();
+        return;
+    }
+
+    const cached = localStorage.getItem("quakeCache");
+
+    if(cached){
+        const parsed = JSON.parse(cached);
+        earthquakeData = parsed.events || [];
+        sourceReport = parsed.sourceReport || [];
+        renderEarthquakes(true);
+    } else {
+        clearMarkers();
+        quakeList.innerHTML = "No earthquake data available. Check internet/API access.";
+        dateRange.innerHTML = "No data loaded.";
+        sourceStatus.innerHTML = "All source requests failed or returned no events.";
+    }
+}
+
+function clearMarkers(){
+    markers.forEach(marker => map.removeLayer(marker));
+    markers = [];
+}
+
+function renderSourceStatus(){
+    sourceStatus.innerHTML = renderSourceStatusHtml();
+}
+
+function renderEarthquakes(fromCache = false){
+
+    clearMarkers();
+
+    quakeList.innerHTML = "";
+
+    const minMag = Number(slider.value);
+
+    const filtered = earthquakeData
+        .filter(q => q.properties.mag >= minMag)
+        .sort((a, b) => b.properties.time - a.properties.time);
+
+    renderSourceStatus();
+
+    if(filtered.length > 0){
+        const dates = filtered.map(q => q.properties.time).sort((a, b) => a - b);
+        const oldestDate = new Date(dates[0]).toLocaleDateString();
+        const newestDate = new Date(dates[dates.length - 1]).toLocaleDateString();
+
+        dateRange.innerHTML =
+            `${fromCache ? "⚠️ Offline cache<br>" : ""}` +
+            `📅 ${oldestDate} to ${newestDate}<br>` +
+            `Total shown: ${filtered.length} real events<br>` +
+            `Range setting: last ${rangeSelect.value} days`;
+    } else {
+        dateRange.innerHTML = "No events match current filters.";
+    }
+
+    // Render markers. Hard cap prevents browser meltdown when many APIs return lots of events.
+    const maxMarkers = 2500;
+    const visibleEvents = filtered.slice(0, maxMarkers);
+
+    visibleEvents.forEach(quake => {
+
+        const mag = quake.properties.mag || 0;
+        const place = quake.properties.place || "Unknown location";
+        const time = new Date(quake.properties.time).toLocaleString();
+        const source = quake.properties.source || "Unknown";
+
+        const coords = quake.geometry.coordinates;
+
+        const lon = coords[0];
+        const lat = coords[1];
+        const depth = coords[2];
+
+        const color = getColor(mag);
+
+        const marker = L.circleMarker([lat, lon], {
+            radius: Math.max(mag * 2, 4),
+            color: color,
+            fillColor: color,
+            fillOpacity: 0.7,
+            weight: 1
+        }).addTo(map);
+
+        marker.bindPopup(`
+            <b>M${mag.toFixed(1)}</b><br>
+            ${place}<br>
+            Depth: ${depth} km<br>
+            ${time}<br>
+            Source: ${source}
+        `);
+
+        // Store quake data for tsunami warning
+        marker._quakeData = quake;
+        marker.on('popupopen', function() {
+            // Add tsunami button after popup opens
+            setTimeout(() => {
+                const popupContent = document.querySelector('.leaflet-popup-content');
+                if (popupContent && !popupContent.querySelector('.tsunami-btn')) {
+                    const btn = document.createElement('button');
+                    btn.className = 'tsunami-btn';
+                    btn.textContent = '🌊 Check Tsunami Risk';
+                    btn.style.cssText = 'margin-top:8px; padding:6px 10px; background:#dc2626; color:white; border:none; border-radius:6px; cursor:pointer; font-size:12px; width:100%;';
+                    btn.onclick = () => showTsunamiWarning(marker._quakeData);
+                    popupContent.appendChild(btn);
+                }
+            }, 50);
+        });
+
+        markers.push(marker);
+
+        const div = document.createElement("div");
+        div.className = "quake";
+
+        div.innerHTML = `
+            <div class="mag" style="color:${color}">
+                M${mag.toFixed(1)}
+            </div>
+
+            <div class="small">
+                ${place}
+            </div>
+
+            <div class="small">
+                Depth: ${depth} km
+            </div>
+
+            <div class="small">
+                ${time}
+            </div>
+
+            <div class="small" style="color:#93c5fd;">
+                Source: ${source}
+            </div>
+        `;
+
+        div.addEventListener("click", () => {
+            map.setView([lat, lon], 6);
+            marker.openPopup();
+            // Also show tsunami warning
+            showTsunamiWarning(quake);
+        });
+
+        quakeList.appendChild(div);
+
+    });
+
+    if(filtered.length > maxMarkers){
+        const capNotice = document.createElement("div");
+        capNotice.className = "small";
+        capNotice.style.padding = "10px";
+        capNotice.style.background = "#111827";
+        capNotice.style.border = "1px solid #334155";
+        capNotice.style.borderRadius = "10px";
+        capNotice.innerHTML = `Showing newest ${maxMarkers} markers to protect browser performance. Raise minimum magnitude for less load.`;
+        quakeList.prepend(capNotice);
+    }
+
+    if(filtered.length === 0){
+        quakeList.innerHTML = "No earthquakes match current filter.";
+    }
+
+    if(stationToggle.checked && stationData.length > 0){
+        renderStations();
+    }
+}
+
+const cachedStations = localStorage.getItem("stationCache");
+if(cachedStations){
+    try{
+        stationData = JSON.parse(cachedStations).stations || [];
+    } catch(error){
+        stationData = [];
+    }
+}
+
+fetchEarthquakes();
+
+// Auto-refresh disabled: 6-month historical data doesn't need constant polling.
+// Users can click "Refresh real data" button to manually update when needed.
+// setInterval(fetchEarthquakes, 15 * 60 * 1000);
+</script>
+
+</body>
+</html>

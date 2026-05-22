@@ -1,0 +1,34 @@
+# Build directories
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+venv/
+env/
+.env
+
+# Caches
+.cache/
+*.cache
+
+# Lock files (optional - uncomment if needed)
+# *.lock
+
+# Compiled spec
+*.spec
