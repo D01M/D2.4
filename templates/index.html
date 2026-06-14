@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Real-time seismic disaster tracking with live earthquake data from USGS">
+  <meta name="theme-color" content="#0b1627">
+  <title>Seismic Disaster Tracker v6 Stable</title>
+  
+  <!-- Critical CSS - Inline to prevent render blocking -->
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; font-family: Arial, sans-serif; }
+    #cesiumContainer { width: 100%; height: 100%; position: relative; }
+    body { background: #000; color: #e2e8f0; overflow: hidden; }
+  </style>
+  
+  <!-- Cesium - Load synchronously to ensure availability -->
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  
+  <!-- Application Styles -->
+  <link rel="stylesheet" href="/static/css/style.css">
+  
+  <!-- Preload critical resources -->
+  <link rel="preload" href="/static/js/map.js" as="script">
+  <link rel="preload" href="/static/js/ui.js" as="script">
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+
+  <div class="shell">
+    <section class="panel">
+      <h1>🌍 Seismic Disaster Tracker v6</h1>
+      <div class="sub">Stable local safety dashboard: real USGS earthquakes, static/educational risk layers, simulated station telemetry.</div>
+      <div class="grid">
+        <div class="stat">
+          <div class="num" id="quakeCount">0</div>
+          <div class="cap">Earthquakes</div>
+        </div>
+        <div class="stat">
+          <div class="num" id="strongCount">0</div>
+          <div class="cap">M ≥ 5.0</div>
+        </div>
+        <div class="stat">
+          <div class="num" id="stationCount">0</div>
+          <div class="cap">Stations</div>
+        </div>
+        <div class="stat">
+          <div class="num" id="riskCount">0</div>
+          <div class="cap">Safety risks</div>
+        </div>
+      </div>
+
+      <h2>Controls</h2>
+      <label style="font-size: 12px">Magnitude filter: <b id="magValue">0.0</b></label>
+      <input id="magFilter" type="range" min="0" max="8" step="0.1" value="0">
+      <div>
+        <button onclick="refreshAll()">🔄 Refresh</button>
+        <button onclick="resetView()">🎯 Reset</button>
+        <button onclick="toggleRotation()">🌀 Rotation</button>
+        <select onchange="setGlobeMode(this.value)">
+          <option value="osm" selected>OpenStreetMap</option>
+          <option value="satellite">Satellite View</option>
+          <option value="dark">Dark Mode</option>
+        </select>
+      </div>
+
+      <h2>Layers</h2>
+      <div class="checks">
+        <label><input type="checkbox" id="showQuakes" checked> Earthquakes</label>
+        <label><input type="checkbox" id="showStations" checked> Stations</label>
+        <label><input type="checkbox" id="showWaves" checked> Waves</label>
+        <label><input type="checkbox" id="showVolcanoes" checked> Volcanoes</label>
+        <label><input type="checkbox" id="showFaults" checked> Fault nodes</label>
+        <label><input type="checkbox" id="showRisks" checked> Risk zones</label>
+        <label><input type="checkbox" id="showPlaces" checked> Places</label>
+      </div>
+
+      <div class="legend">
+        <span class="lg"><span class="dot" style="background: #28a7ff"></span>Weak</span>
+        <span class="lg"><span class="dot" style="background: #ffe45e"></span>Moderate</span>
+        <span class="lg"><span class="dot" style="background: #ff6b42"></span>Strong</span>
+        <span class="lg"><span class="dot" style="background: #050505; border: 1px solid white"></span>Extreme</span>
+        <span class="lg"><span class="dot" style="background: #00ffd1"></span>Station</span>
+        <span class="lg"><span class="dot" style="background: #ff2ea6"></span>Volcano</span>
+        <span class="lg"><span class="dot" style="background: #36ff72"></span>Fault</span>
+        <span class="lg"><span class="dot" style="background: #ff8d3d"></span>Risk</span>
+      </div>
+      <div class="warn">Globe loaded with OpenStreetMap tiles. Switch to Satellite or Dark mode for different views. Real USGS earthquake data overlaid on map.</div>
+
+      <h2>Selected object</h2>
+      <div id="telemetry" class="telemetry">Click any dot/ring on the globe.</div>
+    </section>
+
+    <div class="center">
+      <div class="topbar">Real-time seismic globe · click dots for data · official alerts still beat this app</div>
+    </div>
+
+    <section class="panel right">
+      <h2>Priority safety summary</h2>
+      <div id="summaryList" class="list">Loading...</div>
+      <h2>Station telemetry</h2>
+      <div id="stationList" class="list">Loading...</div>
+      <h2>Fault classification</h2>
+      <div id="faultList" class="list">Loading...</div>
+    </section>
+  </div>
+
+  <div class="footer" id="statusText">Booting...</div>
+
+  <!-- Application Scripts - Deferred for optimal loading -->
+  <!-- Loading order matters: performance → base map → data modules → ui orchestration -->
+  <script defer src="/static/js/performance.js"></script>
+  <script defer src="/static/js/map.js"></script>
+  <script defer src="/static/js/earthquakes.js"></script>
+  <script defer src="/static/js/tsunami.js"></script>
+  <script defer src="/static/js/stations.js"></script>
+  <script defer src="/static/js/ui.js"></script>
+  
+  <!-- Real-time Live Alert System -->
+  <script defer src="/static/js/live-alerts.js"></script>
+  <script defer src="/static/js/alert-control-panel.js"></script>
+</body>
+</html>
