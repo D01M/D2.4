@@ -50,13 +50,15 @@ def main():
     
     # Step 2: Build EXE using PyInstaller
     if not run_command(
-        f'"{sys.executable}" -m PyInstaller --onefile desktop_app.spec',
+        f'"{sys.executable}" -m PyInstaller desktop_app.spec',
         "Building desktop application EXE"
     ):
         return False
     
     # Step 3: Check output
-    exe_path = Path("dist") / "OpenSeismo Lite.exe"
+    exe_path_onefile = Path("dist") / "OpenSeismo Lite.exe"
+    exe_path_folder = Path("dist") / "OpenSeismo Lite" / "OpenSeismo Lite.exe"
+    exe_path = exe_path_onefile if exe_path_onefile.exists() else exe_path_folder
     if exe_path.exists():
         exe_size_mb = exe_path.stat().st_size / (1024 * 1024)
         print(f"\n✅ SUCCESS! Desktop EXE created: {exe_path}")

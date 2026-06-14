@@ -26,20 +26,26 @@ echo [3/4] Installing PyInstaller...
 python -m pip install pyinstaller -q
 
 echo [4/4] Building OpenSeismo Lite.exe...
-python -m PyInstaller --onefile desktop_app.spec
+python -m PyInstaller desktop_app.spec
 
 echo.
 if exist "dist\OpenSeismo Lite.exe" (
+    set "EXE_PATH=dist\OpenSeismo Lite.exe"
+) else if exist "dist\OpenSeismo Lite\OpenSeismo Lite.exe" (
+    set "EXE_PATH=dist\OpenSeismo Lite\OpenSeismo Lite.exe"
+)
+
+if defined EXE_PATH (
     echo.
     echo ============================================================
     echo  SUCCESS! Desktop EXE created
     echo ============================================================
     echo.
-    echo Location: dist\OpenSeismo Lite.exe
+    echo Location: %EXE_PATH%
     echo.
     echo To run the application:
-    echo   1. Navigate to the 'dist' folder
-    echo   2. Double-click 'OpenSeismo Lite.exe'
+    echo   1. Navigate to the folder containing the executable
+    echo   2. Double-click the OpenSeismo Lite executable
     echo.
     echo Features:
     echo   - Real-time earthquake monitoring

@@ -59,7 +59,7 @@ python build_desktop_exe.py
 ```bash
 pip install -r requirements.txt
 pip install pyinstaller
-pyinstaller --onefile desktop_app.spec
+pyinstaller desktop_app.spec
 ```
 
 ## Running the Application

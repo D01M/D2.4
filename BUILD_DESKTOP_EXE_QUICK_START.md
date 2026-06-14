@@ -25,7 +25,7 @@ build_desktop_exe.bat
 The script will:
 - Install dependencies
 - Build the desktop EXE
-- Create `dist/OpenSeismo Lite.exe`
+- Create `dist/OpenSeismo Lite/OpenSeismo Lite.exe`
 
 ## Run the Application
 
