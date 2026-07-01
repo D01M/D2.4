@@ -51,6 +51,7 @@ class OpenSeismoGlobeView {
     window.addEventListener('openseismo:live-detection', this._onLiveDetectionBound);
     this.setMode("globe");
     this.ready = true;
+    console.log("OpenSeismoGlobeView initialized. mode=globe, ready=true, handler attached:", !!this.viewer.screenSpaceEventHandler);
     this.scheduleSync();
   }
 
@@ -102,6 +103,7 @@ class OpenSeismoGlobeView {
     handler.setInputAction(this._onMove, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
     handler.setInputAction(this._onClick, Cesium.ScreenSpaceEventType.LEFT_CLICK);
     handler.setInputAction(this._onDoubleClick, Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
+    console.log("Events attached to viewer.screenSpaceEventHandler");
   }
 
   destroy() {
@@ -136,6 +138,8 @@ class OpenSeismoGlobeView {
     this.collections.alerts.show = modernVisible;
     this.collections.boundaries.show = modernVisible;
 
+    console.log(`setMode(${this.mode}): earthquakes collection show=${modernVisible}, ready=${this.ready}`);
+
     setVisible(this.legacySets.stations(), legacyVisible);
     setVisible(this.legacySets.earthquakes(), legacyVisible);
 
@@ -152,6 +156,7 @@ class OpenSeismoGlobeView {
 
   setEarthquakes(earthquakes) {
     this.data.earthquakes = Array.isArray(earthquakes) ? earthquakes : [];
+    console.log("setEarthquakes called with", this.data.earthquakes.length, "earthquakes");
     this.scheduleSync();
   }
 
@@ -181,6 +186,7 @@ class OpenSeismoGlobeView {
 
   sync() {
     if (this.destroyed || this.mode !== "globe") return;
+    console.log("sync() called in globe mode. earthquakes:", this.data.earthquakes.length);
     this.syncPointLayer("stations", this.getStationMarkers());
     this.syncPointLayer("earthquakes", this.getEarthquakeMarkers());
     this.syncPointLayer("detections", this.getDetectionMarkers());
@@ -221,6 +227,7 @@ class OpenSeismoGlobeView {
       });
       primitive._markerData = marker;
       index.set(marker.id, primitive);
+      if (marker.type === "earthquake") console.log(`Created earthquake primitive: ${marker.id}, show=${marker.show}, markerData attached:`, !!primitive._markerData);
     }
 
     for (const [id, primitive] of index.entries()) {
@@ -518,7 +525,10 @@ class OpenSeismoGlobeView {
       lastUpdated: entityEventData.time || entityEventData.lastUpdated
     } : null;
     const marker = primitiveMarker || legacyMarker;
-    if (!marker) return;
+    if (!marker) {
+      console.log("_onClick: no marker found. picked:", picked, "primitiveMarker:", primitiveMarker, "legacyMarker:", legacyMarker);
+      return;
+    }
 
     const now = Date.now();
     const isDouble = this.lastClick.id === marker.id && now - this.lastClick.time < 350;
@@ -527,6 +537,7 @@ class OpenSeismoGlobeView {
     const telemetry = document.getElementById("telemetry");
     const statusText = document.getElementById("statusText");
     const infoHtml = this.tooltipHtml(marker, true);
+    console.log("_onClick: updating marker", marker.label, "telemetry:", !!telemetry, "statusText:", !!statusText);
     if (telemetry) telemetry.innerHTML = infoHtml;
     if (statusText) statusText.innerHTML = `<span class="ok">Earthquake</span> · ${infoHtml.replace(/<br>/g, ' · ')}`;
 
