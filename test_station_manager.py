@@ -113,6 +113,13 @@ class StationManagerTests(unittest.TestCase):
         self.assertIsNone(manager.update_noise_level("missing", "bad"))
         self.assertIsNone(manager.update_last_seen("missing", "bad"))
 
+    def test_georgian_ies_station_codes_are_present_in_catalog(self):
+        manager = StationManager(Path("data/stations/stations.json"))
+
+        self.assertIsNotNone(manager.get_station_by_network_code("IES", "S186"))
+        self.assertIsNotNone(manager.get_station_by_network_code("IES", "SC07"))
+        self.assertIsNotNone(manager.get_station_by_network_code("IES", "EMLK"))
+
 
 if __name__ == "__main__":
     unittest.main()

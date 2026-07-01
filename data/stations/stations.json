@@ -1,6 +1,90 @@
 {
   "stations": [
     {
+      "id": "demo:IES:S186",
+      "network": "IES",
+      "code": "S186",
+      "name": "S186 - Tbilisi",
+      "latitude": 41.7151,
+      "longitude": 44.8271,
+      "country": "Georgia",
+      "region": "Tbilisi",
+      "channels": [
+        "BHN",
+        "BHE",
+        "HHZ"
+      ],
+      "provider": "IES/FDSN",
+      "source": "IES/FDSN",
+      "status": "online",
+      "priority": 10,
+      "tags": [
+        "georgia",
+        "ies",
+        "fdns",
+        "tbilisi"
+      ],
+      "last_seen": "2026-07-01T10:00:00Z",
+      "noise_level": 14,
+      "elevation_m": 470
+    },
+    {
+      "id": "demo:IES:SC07",
+      "network": "IES",
+      "code": "SC07",
+      "name": "SC07 - Kutaisi",
+      "latitude": 42.2501,
+      "longitude": 42.7000,
+      "country": "Georgia",
+      "region": "Imereti",
+      "channels": [
+        "BHE",
+        "HHZ",
+        "EHZ"
+      ],
+      "provider": "IES/FDSN",
+      "source": "IES/FDSN",
+      "status": "delayed",
+      "priority": 9,
+      "tags": [
+        "georgia",
+        "ies",
+        "fdns",
+        "kutaisi"
+      ],
+      "last_seen": "2026-07-01T10:00:00Z",
+      "noise_level": 21,
+      "elevation_m": 320
+    },
+    {
+      "id": "demo:IES:EMLK",
+      "network": "IES",
+      "code": "EMLK",
+      "name": "EMLK - Batumi",
+      "latitude": 41.6458,
+      "longitude": 41.6333,
+      "country": "Georgia",
+      "region": "Adjara",
+      "channels": [
+        "BHN",
+        "BHE",
+        "HHZ"
+      ],
+      "provider": "IES/FDSN",
+      "source": "IES/FDSN",
+      "status": "triggering",
+      "priority": 8,
+      "tags": [
+        "georgia",
+        "ies",
+        "fdns",
+        "batumi"
+      ],
+      "last_seen": "2026-07-01T10:00:00Z",
+      "noise_level": 27,
+      "elevation_m": 12
+    },
+    {
       "id": "demo:JMA:JMA001",
       "network": "JMA",
       "code": "JMA001",
