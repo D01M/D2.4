@@ -9,8 +9,11 @@ from tsunami_warning import TsunamiWarningSystem, format_tsunami_report
 from intensity_calculator import IntensityCalculator, FaultType, AgencySummaryProcessor
 from location_search import LocationSearcher
 from live_earthquake_detector import LiveEarthquakeDetector
+from openseismo.stations.station_manager import StationManager
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
+
+station_manager = StationManager()
 
 # ============= LIVE UPDATE SYSTEM =============
 # Track last seen earthquakes for new alert detection
@@ -1028,109 +1031,29 @@ def get_earthquakes():
 
 @app.route("/api/stations")
 def get_stations():
-    """Get comprehensive global seismic station network data (65+ stations)"""
+    """Get normalized seismic station network data."""
     try:
-        # Comprehensive global station network covering all major tectonic regions
-        stations = [
-            # Asia-Pacific Subduction Zones
-            {"code": "NII", "name": "Tokyo (NIED)", "network": "JMA", "country": "Japan", "health": "operational", "latency_seconds": 0.2, "noise_level": 12, "signal_quality": "excellent", "coverage_radius_km": 150, "lon": 139.7674, "lat": 35.6764},
-            {"code": "OKA", "name": "Okinawa (NIED)", "network": "JMA", "country": "Japan", "health": "operational", "latency_seconds": 0.2, "noise_level": 11, "signal_quality": "excellent", "coverage_radius_km": 140, "lon": 127.7167, "lat": 26.1905},
-            {"code": "HKD", "name": "Hokkaido (JMA)", "network": "JMA", "country": "Japan", "health": "operational", "latency_seconds": 0.2, "noise_level": 13, "signal_quality": "excellent", "coverage_radius_km": 145, "lon": 141.6469, "lat": 43.0642},
-            {"code": "TAP", "name": "Taipei (CWB)", "network": "CWB", "country": "Taiwan", "health": "operational", "latency_seconds": 0.3, "noise_level": 15, "signal_quality": "excellent", "coverage_radius_km": 120, "lon": 121.5645, "lat": 25.0443},
-            {"code": "JAK", "name": "Jakarta (BMKG)", "network": "BMKG", "country": "Indonesia", "health": "operational", "latency_seconds": 0.4, "noise_level": 18, "signal_quality": "good", "coverage_radius_km": 100, "lon": 106.8456, "lat": -6.2088},
-            {"code": "BDG", "name": "Bandung (BMKG)", "network": "BMKG", "country": "Indonesia", "health": "operational", "latency_seconds": 0.4, "noise_level": 17, "signal_quality": "good", "coverage_radius_km": 95, "lon": 107.6191, "lat": -6.9147},
-            {"code": "MNL", "name": "Manila (PHIVOLCS)", "network": "PHIVOLCS", "country": "Philippines", "health": "operational", "latency_seconds": 0.3, "noise_level": 19, "signal_quality": "good", "coverage_radius_km": 115, "lon": 121.0437, "lat": 14.5995},
-            {"code": "DVO", "name": "Davao (PHIVOLCS)", "network": "PHIVOLCS", "country": "Philippines", "health": "operational", "latency_seconds": 0.3, "noise_level": 18, "signal_quality": "good", "coverage_radius_km": 110, "lon": 125.3521, "lat": 7.0731},
-            {"code": "BNK", "name": "Bangkok (DMR)", "network": "DMR", "country": "Thailand", "health": "operational", "latency_seconds": 0.3, "noise_level": 17, "signal_quality": "good", "coverage_radius_km": 105, "lon": 100.4935, "lat": 13.7563},
-            {"code": "KTM", "name": "Kathmandu (NBC)", "network": "NBC", "country": "Nepal", "health": "operational", "latency_seconds": 0.4, "noise_level": 20, "signal_quality": "good", "coverage_radius_km": 120, "lon": 85.3157, "lat": 27.7172},
-            {"code": "DEL", "name": "Delhi (IMD)", "network": "IMD", "country": "India", "health": "operational", "latency_seconds": 0.4, "noise_level": 21, "signal_quality": "fair", "coverage_radius_km": 130, "lon": 77.1025, "lat": 28.7041},
-            {"code": "CHE", "name": "Chennai (IMD)", "network": "IMD", "country": "India", "health": "operational", "latency_seconds": 0.4, "noise_level": 19, "signal_quality": "good", "coverage_radius_km": 125, "lon": 80.2809, "lat": 13.0827},
-            
-            # Middle East & Turkey
-            {"code": "IST", "name": "Istanbul (Kandilli)", "network": "TR", "country": "Turkey", "health": "operational", "latency_seconds": 0.3, "noise_level": 16, "signal_quality": "good", "coverage_radius_km": 125, "lon": 29.0469, "lat": 41.0082},
-            {"code": "ANK", "name": "Ankara (GDEES)", "network": "TR", "country": "Turkey", "health": "operational", "latency_seconds": 0.3, "noise_level": 15, "signal_quality": "good", "coverage_radius_km": 120, "lon": 32.8597, "lat": 39.9334},
-            {"code": "BEI", "name": "Beirut (NCS)", "network": "LB", "country": "Lebanon", "health": "operational", "latency_seconds": 0.35, "noise_level": 18, "signal_quality": "good", "coverage_radius_km": 100, "lon": 35.4951, "lat": 33.8547},
-            
-            # Caucasus & Georgia (IES/Ilia State University)
-            {"code": "TBS", "name": "Tbilisi (IES)", "network": "GO", "country": "Georgia", "health": "operational", "latency_seconds": 0.3, "noise_level": 14, "signal_quality": "excellent", "coverage_radius_km": 140, "lon": 44.7866, "lat": 41.7151},
-            {"code": "BAT", "name": "Batumi (IES)", "network": "GO", "country": "Georgia", "health": "operational", "latency_seconds": 0.3, "noise_level": 15, "signal_quality": "good", "coverage_radius_km": 120, "lon": 41.6341, "lat": 41.6271},
-            {"code": "GOR", "name": "Gori (IES)", "network": "GO", "country": "Georgia", "health": "operational", "latency_seconds": 0.3, "noise_level": 16, "signal_quality": "good", "coverage_radius_km": 130, "lon": 44.1050, "lat": 42.0113},
-            {"code": "KUT", "name": "Kutaisi (IES)", "network": "GO", "country": "Georgia", "health": "operational", "latency_seconds": 0.3, "noise_level": 15, "signal_quality": "good", "coverage_radius_km": 125, "lon": 42.7143, "lat": 42.2686},
-            {"code": "ZUG", "name": "Zugdidi (IES)", "network": "GO", "country": "Georgia", "health": "operational", "latency_seconds": 0.3, "noise_level": 17, "signal_quality": "good", "coverage_radius_km": 115, "lon": 41.8609, "lat": 42.5126},
-            
-            # Europe
-            {"code": "ROM", "name": "Rome (INGV)", "network": "INGV", "country": "Italy", "health": "operational", "latency_seconds": 0.25, "noise_level": 13, "signal_quality": "excellent", "coverage_radius_km": 135, "lon": 12.4964, "lat": 41.9028},
-            {"code": "ATE", "name": "Athens (NOA)", "network": "NOA", "country": "Greece", "health": "operational", "latency_seconds": 0.3, "noise_level": 14, "signal_quality": "excellent", "coverage_radius_km": 115, "lon": 23.7275, "lat": 37.9838},
-            {"code": "BER", "name": "Berlin (GFZ)", "network": "GFZ", "country": "Germany", "health": "operational", "latency_seconds": 0.25, "noise_level": 10, "signal_quality": "excellent", "coverage_radius_km": 140, "lon": 13.405, "lat": 52.52},
-            {"code": "PAR", "name": "Paris (IPGP)", "network": "IPGP", "country": "France", "health": "operational", "latency_seconds": 0.25, "noise_level": 11, "signal_quality": "excellent", "coverage_radius_km": 135, "lon": 2.3522, "lat": 48.8566},
-            {"code": "LON", "name": "London (BGS)", "network": "BGS", "country": "UK", "health": "operational", "latency_seconds": 0.2, "noise_level": 12, "signal_quality": "excellent", "coverage_radius_km": 130, "lon": -0.1276, "lat": 51.5074},
-            {"code": "ZUR", "name": "Zurich (ETHZ)", "network": "ETHZ", "country": "Switzerland", "health": "operational", "latency_seconds": 0.2, "noise_level": 9, "signal_quality": "excellent", "coverage_radius_km": 125, "lon": 8.5452, "lat": 47.3769},
-            {"code": "WAR", "name": "Warsaw (IPG)", "network": "PL", "country": "Poland", "health": "operational", "latency_seconds": 0.25, "noise_level": 11, "signal_quality": "excellent", "coverage_radius_km": 120, "lon": 21.0122, "lat": 52.2297},
-            
-            # Middle East & Central Asia
-            {"code": "BAK", "name": "Baku (AZER)", "network": "AZ", "country": "Azerbaijan", "health": "operational", "latency_seconds": 0.35, "noise_level": 16, "signal_quality": "good", "coverage_radius_km": 115, "lon": 49.8671, "lat": 40.3856},
-            {"code": "TEH", "name": "Tehran (IRSC)", "network": "IR", "country": "Iran", "health": "operational", "latency_seconds": 0.4, "noise_level": 18, "signal_quality": "good", "coverage_radius_km": 120, "lon": 51.3089, "lat": 35.6892},
-            {"code": "KBL", "name": "Kabul (GSC)", "network": "GSC", "country": "Afghanistan", "health": "operational", "latency_seconds": 0.5, "noise_level": 22, "signal_quality": "fair", "coverage_radius_km": 110, "lon": 69.1761, "lat": 34.5256},
-            
-            # North America
-            {"code": "LAX", "name": "Los Angeles (USGS)", "network": "USGS", "country": "USA", "health": "operational", "latency_seconds": 0.2, "noise_level": 14, "signal_quality": "excellent", "coverage_radius_km": 140, "lon": -118.2437, "lat": 34.0522},
-            {"code": "SFO", "name": "San Francisco (USGS)", "network": "USGS", "country": "USA", "health": "operational", "latency_seconds": 0.2, "noise_level": 13, "signal_quality": "excellent", "coverage_radius_km": 135, "lon": -122.4194, "lat": 37.7749},
-            {"code": "SEA", "name": "Seattle (USGS)", "network": "USGS", "country": "USA", "health": "operational", "latency_seconds": 0.2, "noise_level": 12, "signal_quality": "excellent", "coverage_radius_km": 130, "lon": -122.3321, "lat": 47.6062},
-            {"code": "PHL", "name": "Philadelphia (USGS)", "network": "USGS", "country": "USA", "health": "operational", "latency_seconds": 0.2, "noise_level": 16, "signal_quality": "good", "coverage_radius_km": 130, "lon": -75.1652, "lat": 40.2206},
-            {"code": "NYC", "name": "New York (USGS)", "network": "USGS", "country": "USA", "health": "operational", "latency_seconds": 0.2, "noise_level": 15, "signal_quality": "excellent", "coverage_radius_km": 130, "lon": -74.0060, "lat": 40.7128},
-            {"code": "DEN", "name": "Denver (USGS)", "network": "USGS", "country": "USA", "health": "operational", "latency_seconds": 0.2, "noise_level": 14, "signal_quality": "good", "coverage_radius_km": 125, "lon": -104.9903, "lat": 39.7392},
-            {"code": "TOR", "name": "Toronto (NRCan)", "network": "CA", "country": "Canada", "health": "operational", "latency_seconds": 0.2, "noise_level": 13, "signal_quality": "excellent", "coverage_radius_km": 130, "lon": -79.3957, "lat": 43.6629},
-            {"code": "VAN", "name": "Vancouver (NRCan)", "network": "CA", "country": "Canada", "health": "operational", "latency_seconds": 0.2, "noise_level": 12, "signal_quality": "excellent", "coverage_radius_km": 135, "lon": -123.1207, "lat": 49.2827},
-            {"code": "MEX", "name": "Mexico City (SSN)", "network": "SSN", "country": "Mexico", "health": "operational", "latency_seconds": 0.3, "noise_level": 18, "signal_quality": "good", "coverage_radius_km": 120, "lon": -99.1332, "lat": 19.4326},
-            
-            # Central America & Caribbean
-            {"code": "GUA", "name": "Guatemala City (INSIVUMEH)", "network": "GT", "country": "Guatemala", "health": "operational", "latency_seconds": 0.35, "noise_level": 17, "signal_quality": "good", "coverage_radius_km": 110, "lon": -90.5069, "lat": 14.6349},
-            
-            # South America
-            {"code": "SAL", "name": "Santiago (USACH)", "network": "DGF", "country": "Chile", "health": "operational", "latency_seconds": 0.35, "noise_level": 15, "signal_quality": "good", "coverage_radius_km": 125, "lon": -70.6693, "lat": -33.4489},
-            {"code": "LIM", "name": "Lima (IGP)", "network": "PE", "country": "Peru", "health": "operational", "latency_seconds": 0.35, "noise_level": 16, "signal_quality": "good", "coverage_radius_km": 120, "lon": -77.0369, "lat": -12.0464},
-            {"code": "BOG", "name": "Bogotá (CGS)", "network": "CO", "country": "Colombia", "health": "operational", "latency_seconds": 0.3, "noise_level": 17, "signal_quality": "good", "coverage_radius_km": 115, "lon": -74.0721, "lat": 4.7110},
-            {"code": "QUI", "name": "Quito (IG)", "network": "EC", "country": "Ecuador", "health": "operational", "latency_seconds": 0.3, "noise_level": 16, "signal_quality": "good", "coverage_radius_km": 110, "lon": -78.5249, "lat": -0.2299},
-            {"code": "BRA", "name": "Brasília (LSPB)", "network": "BR", "country": "Brazil", "health": "operational", "latency_seconds": 0.3, "noise_level": 15, "signal_quality": "good", "coverage_radius_km": 120, "lon": -47.8822, "lat": -15.7942},
-            
-            # East Africa (High Activity Zone)
-            {"code": "NBO", "name": "Nairobi (USGS/KS)", "network": "KE", "country": "Kenya", "health": "operational", "latency_seconds": 0.35, "noise_level": 17, "signal_quality": "good", "coverage_radius_km": 115, "lon": 36.8172, "lat": -1.2921},
-            {"code": "ADD", "name": "Addis Ababa (ESC)", "network": "ET", "country": "Ethiopia", "health": "operational", "latency_seconds": 0.4, "noise_level": 18, "signal_quality": "good", "coverage_radius_km": 110, "lon": 38.7469, "lat": 9.0320},
-            
-            # South Africa & Southern Hemisphere
-            {"code": "JNB", "name": "Johannesburg (SA)", "network": "SA", "country": "South Africa", "health": "operational", "latency_seconds": 0.3, "noise_level": 14, "signal_quality": "good", "coverage_radius_km": 125, "lon": 28.0473, "lat": -26.2023},
-            {"code": "CPT", "name": "Cape Town (SA)", "network": "SA", "country": "South Africa", "health": "operational", "latency_seconds": 0.3, "noise_level": 15, "signal_quality": "good", "coverage_radius_km": 120, "lon": 18.4241, "lat": -33.9249},
-            
-            # Oceania
-            {"code": "SYD", "name": "Sydney (GA)", "network": "GA", "country": "Australia", "health": "operational", "latency_seconds": 0.3, "noise_level": 13, "signal_quality": "excellent", "coverage_radius_km": 130, "lon": 151.2093, "lat": -33.8688},
-            {"code": "MBN", "name": "Melbourne (GA)", "network": "GA", "country": "Australia", "health": "operational", "latency_seconds": 0.3, "noise_level": 12, "signal_quality": "excellent", "coverage_radius_km": 130, "lon": 144.9631, "lat": -37.8136},
-            {"code": "PER", "name": "Perth (GA)", "network": "GA", "country": "Australia", "health": "operational", "latency_seconds": 0.3, "noise_level": 13, "signal_quality": "good", "coverage_radius_km": 125, "lon": 115.8605, "lat": -31.9505},
-            {"code": "AKL", "name": "Auckland (GeoNet)", "network": "GeoNet", "country": "New Zealand", "health": "operational", "latency_seconds": 0.3, "noise_level": 12, "signal_quality": "excellent", "coverage_radius_km": 125, "lon": 174.8859, "lat": -37.0082},
-            {"code": "WLG", "name": "Wellington (GeoNet)", "network": "GeoNet", "country": "New Zealand", "health": "operational", "latency_seconds": 0.3, "noise_level": 12, "signal_quality": "excellent", "coverage_radius_km": 120, "lon": 174.7762, "lat": -41.2865},
-            
-            # East Asia
-            {"code": "SEO", "name": "Seoul (KMA)", "network": "KMA", "country": "South Korea", "health": "operational", "latency_seconds": 0.2, "noise_level": 11, "signal_quality": "excellent", "coverage_radius_km": 140, "lon": 126.978, "lat": 37.5665},
-            {"code": "BEI", "name": "Beijing (CEA)", "network": "CEA", "country": "China", "health": "operational", "latency_seconds": 0.25, "noise_level": 14, "signal_quality": "excellent", "coverage_radius_km": 135, "lon": 116.4074, "lat": 39.9042},
-            {"code": "SHA", "name": "Shanghai (CEA)", "network": "CEA", "country": "China", "health": "operational", "latency_seconds": 0.25, "noise_level": 13, "signal_quality": "excellent", "coverage_radius_km": 130, "lon": 121.4737, "lat": 31.2304},
-            {"code": "CHE", "name": "Chengdu (CEA)", "network": "CEA", "country": "China", "health": "operational", "latency_seconds": 0.3, "noise_level": 15, "signal_quality": "good", "coverage_radius_km": 125, "lon": 104.0662, "lat": 30.5728},
-            
-            # Southeast Asia Extended
-            {"code": "HNL", "name": "Hanoi (Vietnam)", "network": "VS", "country": "Vietnam", "health": "operational", "latency_seconds": 0.3, "noise_level": 16, "signal_quality": "good", "coverage_radius_km": 110, "lon": 105.8342, "lat": 21.0285},
-            {"code": "KUL", "name": "Kuala Lumpur (MMS)", "network": "MY", "country": "Malaysia", "health": "operational", "latency_seconds": 0.3, "noise_level": 14, "signal_quality": "good", "coverage_radius_km": 105, "lon": 101.6869, "lat": 3.1390},
-            
-            # Greater China Region
-            {"code": "HKG", "name": "Hong Kong (HKO)", "network": "HKO", "country": "Hong Kong", "health": "operational", "latency_seconds": 0.25, "noise_level": 14, "signal_quality": "excellent", "coverage_radius_km": 120, "lon": 114.1733, "lat": 22.3193},
-            {"code": "TAI", "name": "Taipei Extended (CWB)", "network": "CWB", "country": "Taiwan", "health": "operational", "latency_seconds": 0.3, "noise_level": 14, "signal_quality": "excellent", "coverage_radius_km": 115, "lon": 121.5500, "lat": 25.0800},
-            
-            # Southeast Asia Hub
-            {"code": "SIN", "name": "Singapore (MOM)", "network": "MOM", "country": "Singapore", "health": "operational", "latency_seconds": 0.2, "noise_level": 13, "signal_quality": "excellent", "coverage_radius_km": 100, "lon": 103.8198, "lat": 1.3521},
-            {"code": "BKK2", "name": "Bangkok Extended (DMR)", "network": "DMR", "country": "Thailand", "health": "operational", "latency_seconds": 0.3, "noise_level": 17, "signal_quality": "good", "coverage_radius_km": 110, "lon": 100.5018, "lat": 13.6920},
-            
-            # Russia & Eastern Europe
-            {"code": "MOW", "name": "Moscow (IMGG)", "network": "IMGG", "country": "Russia", "health": "operational", "latency_seconds": 0.4, "noise_level": 17, "signal_quality": "good", "coverage_radius_km": 140, "lon": 37.6173, "lat": 55.7558},
-            {"code": "VLD", "name": "Vladivostok (GSRAS)", "network": "RU", "country": "Russia", "health": "operational", "latency_seconds": 0.4, "noise_level": 16, "signal_quality": "good", "coverage_radius_km": 130, "lon": 131.8854, "lat": 43.1056},
-        ]
-        return jsonify({"stations": stations}), 200
+        network = request.args.get("network")
+        country = request.args.get("country")
+        region = request.args.get("region")
+        status = request.args.get("status")
+        channel = request.args.get("channel")
+        tag = request.args.get("tag")
+        recent_minutes = request.args.get("recent_minutes", type=int)
+        active_recent = request.args.get("active_recent", default="").lower() in {"1", "true", "yes", "on"}
+
+        stations = station_manager.filter_stations(
+            network=network,
+            country=country,
+            region=region,
+            status=status,
+            channel=channel,
+            tag=tag,
+            recent_minutes=recent_minutes if active_recent else None,
+            active_only=active_recent,
+        )
+
+        return jsonify({"count": len(stations), "stations": stations}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

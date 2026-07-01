@@ -59,6 +59,10 @@
         <button onclick="refreshAll()">🔄 Refresh</button>
         <button onclick="resetView()">🎯 Reset</button>
         <button onclick="toggleRotation()">🌀 Rotation</button>
+        <select id="viewMode" onchange="setViewMode(this.value)">
+          <option value="map" selected>Legacy Map</option>
+          <option value="globe">3D Globe</option>
+        </select>
         <select onchange="setGlobeMode(this.value)">
           <option value="osm" selected>OpenStreetMap</option>
           <option value="satellite">Satellite View</option>
@@ -70,6 +74,9 @@
       <div class="checks">
         <label><input type="checkbox" id="showQuakes" checked> Earthquakes</label>
         <label><input type="checkbox" id="showStations" checked> Stations</label>
+        <label><input type="checkbox" id="showActiveDetections" checked> Active detections</label>
+        <label><input type="checkbox" id="showAlerts" checked> Alerts</label>
+        <label><input type="checkbox" id="showBoundaries" checked> Tectonic boundaries</label>
         <label><input type="checkbox" id="showWaves" checked> Waves</label>
         <label><input type="checkbox" id="showVolcanoes" checked> Volcanoes</label>
         <label><input type="checkbox" id="showFaults" checked> Fault nodes</label>
@@ -88,6 +95,7 @@
         <span class="lg"><span class="dot" style="background: #ff8d3d"></span>Risk</span>
       </div>
       <div class="warn">Globe loaded with OpenStreetMap tiles. Switch to Satellite or Dark mode for different views. Real USGS earthquake data overlaid on map.</div>
+      <div id="globeFallback" class="warn" style="display:none;">3D globe unavailable: WebGL is not supported on this device.</div>
 
       <h2>Selected object</h2>
       <div id="telemetry" class="telemetry">Click any dot/ring on the globe.</div>
@@ -101,6 +109,19 @@
       <h2>Priority safety summary</h2>
       <div id="summaryList" class="list">Loading...</div>
       <h2>Station telemetry</h2>
+      <div class="station-filters" style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:6px 0 10px;">
+        <input id="stationNetworkFilter" type="text" placeholder="Network" style="width:100%; padding:6px 8px; font-size:12px;">
+        <input id="stationStatusFilter" type="text" placeholder="Status" style="width:100%; padding:6px 8px; font-size:12px;">
+        <input id="stationChannelFilter" type="text" placeholder="Channel" style="width:100%; padding:6px 8px; font-size:12px;">
+        <input id="stationGeoFilter" type="text" placeholder="Country or region" style="width:100%; padding:6px 8px; font-size:12px;">
+        <input id="stationTagFilter" type="text" placeholder="Tag" style="width:100%; padding:6px 8px; font-size:12px; grid-column:1 / span 2;">
+        <label style="grid-column:1 / span 2; font-size:12px; display:flex; gap:8px; align-items:center;">
+          <input id="stationActiveRecentFilter" type="checkbox">
+          Active/recent trigger
+          <input id="stationRecentMinutesFilter" type="number" min="1" value="30" style="width:90px; padding:4px 6px; font-size:12px;">
+          <span style="color:#9fb3c8;">min</span>
+        </label>
+      </div>
       <div id="stationList" class="list">Loading...</div>
       <h2>Fault classification</h2>
       <div id="faultList" class="list">Loading...</div>
@@ -113,6 +134,7 @@
   <!-- Loading order matters: performance → base map → data modules → ui orchestration -->
   <script defer src="/static/js/performance.js"></script>
   <script defer src="/static/js/map.js"></script>
+  <script defer src="/static/js/globe-view.js"></script>
   <script defer src="/static/js/earthquakes.js"></script>
   <script defer src="/static/js/tsunami.js"></script>
   <script defer src="/static/js/stations.js"></script>

@@ -46,6 +46,7 @@ class EarthquakeMonitor {
     // Update UI
     this.updateStats();
     this.updateList();
+    this.updateLiveDetections();
   }
 
   updateStats() {
@@ -82,6 +83,7 @@ class EarthquakeMonitor {
     listEl.innerHTML = sorted.map((eq, idx) => {
       const mag = (eq.magnitude || 0).toFixed(1);
       const location = eq.location || `${eq.latitude.toFixed(2)}°N, ${eq.longitude.toFixed(2)}°E`;
+      const eventMeta = this.getEventStatusText(eq);
       let levelClass = 'low';
       if (eq.magnitude >= 7) levelClass = 'critical';
       else if (eq.magnitude >= 6) levelClass = 'high';
@@ -90,6 +92,7 @@ class EarthquakeMonitor {
       return `<div class="earthquake-item ${levelClass}">
         <span class="magnitude">M${mag}</span> 
         <strong>${location}</strong>
+        <div class="event-meta">${eventMeta}</div>
         <div class="meta">Depth: ${(eq.depth_km || 0).toFixed(1)} km</div>
       </div>`;
     }).join('');
@@ -97,6 +100,131 @@ class EarthquakeMonitor {
     // Update last updated time
     const lastEl = document.getElementById('last-updated');
     if (lastEl) lastEl.textContent = new Date().toLocaleTimeString();
+  }
+
+  updateLiveDetections() {
+    const listEl = document.getElementById('live-detection-list');
+    if (!listEl) return;
+
+    const detections = this.earthquakes
+      .filter(eq => !this.isConfirmedEarthquake(eq))
+      .sort((a, b) => this.getEventTimeValue(b) - this.getEventTimeValue(a));
+
+    if (detections.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">No live detections.</div>';
+      return;
+    }
+
+    listEl.innerHTML = detections.map(eq => {
+      const station = this.getDetectionSourceName(eq);
+      const detectionTime = this.getDetectionTimeText(eq);
+      const signalStrength = this.getDetectionSignalText(eq);
+      const status = this.getDetectionStatus(eq);
+
+      return `<div class="earthquake-item moderate live-detection-item">
+        <strong>${station}</strong>
+        <div class="event-meta">${detectionTime}${signalStrength ? ` · ${signalStrength}` : ''} · Status: ${status}</div>
+        <div class="warning-text">Automatic detection. Not an official earthquake report.</div>
+      </div>`;
+    }).join('');
+  }
+
+  isConfirmedEarthquake(event) {
+    return event?.reviewed === true || String(event?.status || '').toLowerCase().includes('reviewed') || String(event?.status || '').toLowerCase().includes('confirmed');
+  }
+
+  getDetectionSourceName(event) {
+    return event?.station_name || event?.station || event?.source_name || event?.source || 'Automatic detector';
+  }
+
+  getDetectionTimeText(event) {
+    const value = event?.time_utc || event?.updated || event?.updated_at || event?.last_updated || event?.lastUpdate;
+    if (!value) return 'Time unknown';
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Time unknown';
+
+    return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  }
+
+  getDetectionSignalText(event) {
+    const signal = event?.signal_strength ?? event?.signal ?? event?.amplitude ?? event?.magnitude;
+    if (signal === undefined || signal === null || signal === '') return '';
+
+    const numeric = Number(signal);
+    if (Number.isFinite(numeric)) {
+      return `Signal ${numeric.toFixed(1)}`;
+    }
+
+    return `Signal ${signal}`;
+  }
+
+  getDetectionStatus(event) {
+    const status = String(event?.status || '').toLowerCase();
+
+    if (event?.reviewed === true || status.includes('confirmed') || status.includes('reviewed')) {
+      return 'Confirmed';
+    }
+
+    if (status.includes('dismiss')) {
+      return 'Dismissed';
+    }
+
+    const sourceCount = this.getEventSourceCount(event);
+    if (sourceCount >= 2 || Array.isArray(event?.sources) && event.sources.length >= 2) {
+      return 'Reviewing';
+    }
+
+    return 'Detecting';
+  }
+
+  getEventTimeValue(event) {
+    const value = event?.time_utc || event?.updated || event?.updated_at || event?.last_updated || event?.lastUpdate;
+    const timestamp = new Date(value || 0).getTime();
+    return Number.isFinite(timestamp) ? timestamp : 0;
+  }
+
+  getEventStatusText(event) {
+    const reviewed = event?.reviewed === true || String(event?.status || '').toLowerCase().includes('reviewed');
+    const sourceCount = this.getEventSourceCount(event);
+    const updatedText = this.getEventUpdatedText(event);
+
+    let status = '🔴 Automatic / single-source';
+    if (reviewed) {
+      status = '🟢 Reviewed';
+    } else if (sourceCount >= 2) {
+      status = '🟡 Multi-source preliminary';
+    }
+
+    const parts = [status, `${sourceCount} source${sourceCount === 1 ? '' : 's'}`];
+    if (updatedText) {
+      parts.push(`Updated ${updatedText}`);
+    }
+
+    return parts.join(' · ');
+  }
+
+  getEventSourceCount(event) {
+    const sourceCount = Number(event?.source_count);
+    if (Number.isFinite(sourceCount) && sourceCount > 0) {
+      return sourceCount;
+    }
+
+    if (Array.isArray(event?.sources)) {
+      return event.sources.length;
+    }
+
+    return 1;
+  }
+
+  getEventUpdatedText(event) {
+    const updatedAt = event?.updated || event?.updated_at || event?.last_updated || event?.lastUpdate;
+    if (!updatedAt) return '';
+
+    const date = new Date(updatedAt);
+    if (Number.isNaN(date.getTime())) return '';
+
+    return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   }
 
   startPolling() {

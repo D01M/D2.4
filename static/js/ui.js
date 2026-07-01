@@ -7,6 +7,12 @@ let faultEntities = [];
 let riskEntities = [];
 let placeEntities = [];
 
+function setViewMode(mode) {
+  if (window.openSeismoGlobeView) {
+    window.openSeismoGlobeView.setMode(mode);
+  }
+}
+
 const PLACES = [
   ["Georgia", 42.1, 43.5, "country"],
   ["Tbilisi", 41.7151, 44.8271, "city"],
@@ -137,12 +143,20 @@ function wire() {
   [
     ["showQuakes", quakeEntities],
     ["showStations", stationEntities],
+    ["showActiveDetections", []],
+    ["showAlerts", []],
+    ["showBoundaries", []],
     ["showVolcanoes", volcanoEntities],
     ["showFaults", faultEntities],
     ["showRisks", riskEntities],
     ["showPlaces", placeEntities]
   ].forEach(([id, arr]) => {
-    document.getElementById(id).addEventListener("change", e => setVisible(arr, e.target.checked));
+    document.getElementById(id).addEventListener("change", e => {
+      setVisible(arr, e.target.checked);
+      if (window.openSeismoGlobeView) {
+        window.openSeismoGlobeView.scheduleSync();
+      }
+    });
   });
 
   // Wave visibility toggle
@@ -151,6 +165,21 @@ function wire() {
       clearWaveAnimations();
     } else if (selectedEventForWaves) {
       drawWaves(selectedEventForWaves);
+    }
+  });
+
+  [
+    "stationNetworkFilter",
+    "stationStatusFilter",
+    "stationChannelFilter",
+    "stationGeoFilter",
+    "stationTagFilter",
+    "stationActiveRecentFilter",
+    "stationRecentMinutesFilter"
+  ].forEach(id => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.addEventListener("change", () => refreshStations());
     }
   });
 }
@@ -251,6 +280,18 @@ async function refreshFaults() {
       );
     });
 
+    if (window.openSeismoGlobeView) {
+      const boundaryLines = (data.faults || [])
+        .filter(f => Array.isArray(f.points) && f.points.length > 1)
+        .map((f, idx) => ({
+          id: f.id || f.name || `fault-${idx}`,
+          positions: f.points.flatMap(p => [p[1], p[0], 0]),
+          color: colorForRisk(f.risk_level),
+          width: f.risk_level === "extreme" ? 3 : 2
+        }));
+      window.openSeismoGlobeView.setBoundaries(boundaryLines);
+    }
+
     document.getElementById("faultList").innerHTML = rows.join("") || "No faults.";
   } catch (e) {
     console.error(e);
@@ -273,6 +314,20 @@ async function refreshRisks() {
     });
 
     document.getElementById("riskCount").textContent = data.risks?.length || 0;
+
+    if (window.openSeismoGlobeView) {
+      window.openSeismoGlobeView.setAlerts((data.risks || []).map((r, idx) => ({
+        id: r.id || r.name || `risk-${idx}`,
+        latitude: r.lat,
+        longitude: r.lon,
+        label: r.name,
+        status: r.risk_level,
+        confidence: r.score,
+        lastUpdated: r.trigger,
+        intensity: r.risk_level,
+        magnitude: r.score
+      })));
+    }
   } catch (e) {
     console.error(e);
   }
@@ -306,6 +361,10 @@ async function refreshSummary() {
 async function init() {
   try {
     await initMap();
+    if (typeof OpenSeismoGlobeView === "function") {
+      window.openSeismoGlobeView = new OpenSeismoGlobeView(getViewer());
+      window.openSeismoGlobeView.init();
+    }
     setGlobeMode("osm"); // Load OpenStreetMap tiles by default
     wire();
     addPlaces();

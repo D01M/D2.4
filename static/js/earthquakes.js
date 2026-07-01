@@ -76,9 +76,34 @@ async function refreshQuakes() {
         depth: c[2] || 10,
         mag: m,
         place: p.place || "Unknown",
-        time: p.time
+        time: p.time,
+        reviewed: p.reviewed,
+        status: p.status,
+        confidence: p.confidence,
+        label: p.place || "Unknown"
       };
     });
+
+    if (window.openSeismoGlobeView) {
+      window.openSeismoGlobeView.setEarthquakes((data.features || []).map(f => {
+        const p = f.properties || {};
+        const c = f.geometry?.coordinates || [0, 0, 0];
+        return {
+          id: p.id || f.id || `${c[1]}:${c[0]}:${p.time}`,
+          latitude: c[1],
+          longitude: c[0],
+          magnitude: Number(p.mag || 0),
+          depth_km: c[2] || 10,
+          region: p.place || "Unknown",
+          time_utc: p.time,
+          status: p.status || "unreviewed",
+          confidence: p.confidence,
+          reviewed: p.reviewed,
+          lastUpdated: p.time,
+          label: p.place || "Unknown"
+        };
+      }));
+    }
 
     document.getElementById("quakeCount").textContent = data.features?.length || 0;
     document.getElementById("strongCount").textContent = strong;

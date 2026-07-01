@@ -268,6 +268,20 @@
     margin-top: 4px;
 }
 
+.earthquake-item .event-meta {
+    color: #b9c7d6;
+    font-size: 11px;
+    margin-top: 6px;
+    line-height: 1.35;
+}
+
+.earthquake-item .warning-text {
+    color: #ffcc66;
+    font-size: 11px;
+    margin-top: 4px;
+    line-height: 1.35;
+}
+
 .earthquake-item .time {
     color: #888;
     font-size: 11px;

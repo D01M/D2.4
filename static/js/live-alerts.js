@@ -113,6 +113,36 @@ class LiveAlertSystem {
      */
     async handleNewEarthquake(earthquake, alertConfig, tsunamiWarning, eewWarning) {
         console.log('🔴 New earthquake detected:', earthquake);
+
+        window.dispatchEvent(new CustomEvent('openseismo:live-detection', {
+            detail: {
+                id: earthquake.id || `${earthquake.latitude}:${earthquake.longitude}:${earthquake.time_utc || Date.now()}`,
+                latitude: earthquake.latitude,
+                longitude: earthquake.longitude,
+                magnitude: earthquake.magnitude,
+                depth_km: earthquake.depth_km,
+                region: earthquake.place || earthquake.region || 'Unknown',
+                time_utc: earthquake.time_utc || new Date().toISOString(),
+                status: earthquake.reviewed ? 'confirmed' : 'automatic',
+                confidence: earthquake.confidence,
+                label: earthquake.place || 'Automatic detection'
+            }
+        }));
+
+        if (window.openSeismoGlobeView) {
+            window.openSeismoGlobeView.setDetections([{
+                id: earthquake.id || `${earthquake.latitude}:${earthquake.longitude}:${earthquake.time_utc || Date.now()}`,
+                latitude: earthquake.latitude,
+                longitude: earthquake.longitude,
+                magnitude: earthquake.magnitude,
+                depth_km: earthquake.depth_km,
+                region: earthquake.place || earthquake.region || 'Unknown',
+                time_utc: earthquake.time_utc || new Date().toISOString(),
+                status: earthquake.reviewed ? 'confirmed' : 'automatic',
+                confidence: earthquake.confidence,
+                label: earthquake.place || 'Automatic detection'
+            }]);
+        }
         
         // Check if should mute
         if (this.isMuted()) {
