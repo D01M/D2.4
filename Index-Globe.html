@@ -266,10 +266,12 @@
         handler.setInputAction(function onClick(click) {
             const picked = viewer.scene.pick(click.position);
             if (Cesium.defined(picked) && picked.id) {
-                const eq = {
+                console.log('marker clicked');
+                const eq = picked.id._quakeData || {
                     properties: picked.id.properties,
                     geometry: picked.id.geometry
                 };
+                console.log('earthquake object', eq);
                 showEarthquakeInfo(eq);
             }
         }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
@@ -340,6 +342,7 @@
                     properties: eq.properties,
                     geometry: eq.geometry
                 });
+                entity._quakeData = eq;
 
                 // Click handler
                 viewer.screenSpaceEventHandler.setInputAction(function() {
@@ -367,6 +370,8 @@
         }
 
         function showEarthquakeInfo(eq) {
+            console.log('info panel function called');
+            console.log('earthquake object', eq);
             const mag = eq.properties.mag || 0;
             const depth = eq.geometry.coordinates[2] || 0;
             const lat = eq.geometry.coordinates[1];
