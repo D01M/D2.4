@@ -228,6 +228,65 @@
     font-weight: bold;
 }
 
+/* Earthquake detail panel */
+.detail-panel {
+    max-height: 42vh;
+    box-shadow: 0 0 24px rgba(0, 255, 255, 0.14);
+}
+
+.detail-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.detail-hero {
+    background: rgba(0, 150, 255, 0.14);
+    border: 1px solid rgba(0, 255, 153, 0.24);
+    border-radius: 6px;
+    padding: 12px;
+}
+
+.detail-hero .detail-badge {
+    display: inline-block;
+    background: rgba(255, 100, 100, 0.24);
+    color: #ff8888;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.detail-hero h3 {
+    margin: 0;
+    color: #f8fafc;
+    font-size: 15px;
+}
+
+.detail-grid {
+    display: grid;
+    gap: 8px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(0, 150, 255, 0.12);
+    font-size: 12px;
+}
+
+.detail-row span {
+    color: #00ccff;
+}
+
+.detail-row strong {
+    color: #e2e8f0;
+    text-align: right;
+}
+
 /* Earthquake list items */
 .earthquake-item,
 .tsunami-item {
@@ -244,6 +303,12 @@
 .tsunami-item:hover {
     background: rgba(0, 150, 255, 0.2);
     box-shadow: 0 0 10px rgba(0, 255, 153, 0.3);
+}
+
+.earthquake-item.selected {
+    background: rgba(0, 255, 153, 0.16);
+    border-left-color: #00ffff;
+    box-shadow: inset 0 0 0 1px rgba(0, 255, 153, 0.3);
 }
 
 .earthquake-item.high,

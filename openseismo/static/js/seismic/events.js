@@ -9,9 +9,12 @@ class EarthquakeMonitor {
     this.updateInterval = 60000; // 1 minute
     this.updateTimer = null;
     this.minMagnitude = 4.0;
+    this.selectedEarthquake = null;
+    this.selectedEarthquakeId = null;
   }
 
   async init() {
+    this.bindSelectionEvents();
     await this.update();
     this.startPolling();
     console.log('EarthquakeMonitor initialized with 3D Globe');
@@ -47,6 +50,7 @@ class EarthquakeMonitor {
     this.updateStats();
     this.updateList();
     this.updateLiveDetections();
+    this.renderSelectedEarthquake();
   }
 
   updateStats() {
@@ -80,16 +84,18 @@ class EarthquakeMonitor {
     }
 
     const sorted = filtered.sort((a, b) => b.magnitude - a.magnitude);
-    listEl.innerHTML = sorted.map((eq, idx) => {
+    listEl.innerHTML = sorted.map((eq) => {
       const mag = (eq.magnitude || 0).toFixed(1);
       const location = eq.location || `${eq.latitude.toFixed(2)}°N, ${eq.longitude.toFixed(2)}°E`;
       const eventMeta = this.getEventStatusText(eq);
+      const eqId = this.getEarthquakeIdentity(eq);
+      const isSelected = this.isSelectedEarthquake(eq);
       let levelClass = 'low';
       if (eq.magnitude >= 7) levelClass = 'critical';
       else if (eq.magnitude >= 6) levelClass = 'high';
       else if (eq.magnitude >= 5) levelClass = 'moderate';
       
-      return `<div class="earthquake-item ${levelClass}">
+      return `<div class="earthquake-item ${levelClass}${isSelected ? ' selected' : ''}" data-eq-id="${eqId.replace(/"/g, '&quot;')}">
         <span class="magnitude">M${mag}</span> 
         <strong>${location}</strong>
         <div class="event-meta">${eventMeta}</div>
@@ -120,13 +126,130 @@ class EarthquakeMonitor {
       const detectionTime = this.getDetectionTimeText(eq);
       const signalStrength = this.getDetectionSignalText(eq);
       const status = this.getDetectionStatus(eq);
+      const eqId = this.getEarthquakeIdentity(eq);
+      const isSelected = this.isSelectedEarthquake(eq);
 
-      return `<div class="earthquake-item moderate live-detection-item">
+      return `<div class="earthquake-item moderate live-detection-item${isSelected ? ' selected' : ''}" data-eq-id="${eqId.replace(/"/g, '&quot;')}">
         <strong>${station}</strong>
         <div class="event-meta">${detectionTime}${signalStrength ? ` · ${signalStrength}` : ''} · Status: ${status}</div>
         <div class="warning-text">Automatic detection. Not an official earthquake report.</div>
       </div>`;
     }).join('');
+  }
+
+  bindSelectionEvents() {
+    window.addEventListener('earthquakeSelected', (event) => {
+      const selectedEvent = this.findEarthquakeByCoordinates(event.detail);
+      if (selectedEvent) {
+        this.selectEarthquake(selectedEvent);
+      }
+    });
+
+    document.addEventListener('click', (event) => {
+      const selectedItem = event.target.closest('.earthquake-item[data-eq-id]');
+      if (!selectedItem) return;
+
+      const eqId = selectedItem.getAttribute('data-eq-id');
+      const eq = this.getEarthquakeById(eqId);
+      if (eq) {
+        this.selectEarthquake(eq);
+      }
+    });
+  }
+
+  selectEarthquake(event) {
+    this.selectedEarthquake = event;
+    this.selectedEarthquakeId = this.getEarthquakeIdentity(event);
+    this.renderSelectedEarthquake();
+    this.updateList();
+    this.updateLiveDetections();
+  }
+
+  renderSelectedEarthquake() {
+    const panel = document.getElementById('earthquake-detail-panel');
+    const content = document.getElementById('earthquake-detail-content');
+    if (!panel || !content) return;
+
+    if (!this.selectedEarthquake) {
+      panel.style.display = 'none';
+      content.innerHTML = '<div class="empty-state">Select an earthquake to view details.</div>';
+      return;
+    }
+
+    panel.style.display = 'block';
+    const eq = this.selectedEarthquake;
+    const mag = (eq.magnitude || 0).toFixed(1);
+    const location = eq.location || `${eq.latitude.toFixed(2)}°N, ${eq.longitude.toFixed(2)}°E`;
+    const timeText = this.getEventTimeText(eq);
+    const statusText = this.getEventStatusText(eq);
+    const depth = (eq.depth_km || 0).toFixed(1);
+    const sourceCount = this.getEventSourceCount(eq);
+
+    content.innerHTML = `
+      <div class="detail-hero">
+        <div class="detail-badge">M${mag}</div>
+        <h3>${location}</h3>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-row"><span>Time</span><strong>${timeText}</strong></div>
+        <div class="detail-row"><span>Status</span><strong>${statusText}</strong></div>
+        <div class="detail-row"><span>Depth</span><strong>${depth} km</strong></div>
+        <div class="detail-row"><span>Sources</span><strong>${sourceCount} source${sourceCount === 1 ? '' : 's'}</strong></div>
+        <div class="detail-row"><span>Coordinates</span><strong>${eq.latitude.toFixed(2)}°, ${eq.longitude.toFixed(2)}°</strong></div>
+      </div>
+    `;
+  }
+
+  getEarthquakeById(eqId) {
+    if (!eqId) return null;
+    return this.earthquakes.find(eq => this.getEarthquakeIdentity(eq) === eqId) || null;
+  }
+
+  findEarthquakeByCoordinates(detail) {
+    if (!detail) return null;
+
+    const targetLat = Number(detail.latitude);
+    const targetLon = Number(detail.longitude);
+    const targetMag = Number(detail.magnitude);
+
+    return this.earthquakes.find(eq => {
+      const eqLat = Number(eq.latitude);
+      const eqLon = Number(eq.longitude);
+      const eqMag = Number(eq.magnitude);
+      return eqLat.toFixed(2) === targetLat.toFixed(2)
+        && eqLon.toFixed(2) === targetLon.toFixed(2)
+        && eqMag.toFixed(1) === targetMag.toFixed(1);
+    }) || null;
+  }
+
+  getEarthquakeIdentity(event) {
+    const id = event?.id || event?.event_id || event?.code || event?.publicid || event?.public_id;
+    if (id) return String(id);
+
+    const latitude = Number(event?.latitude || 0).toFixed(2);
+    const longitude = Number(event?.longitude || 0).toFixed(2);
+    const magnitude = Number(event?.magnitude || 0).toFixed(1);
+    const location = String(event?.location || '').trim();
+    return `${latitude}:${longitude}:${magnitude}:${location}`;
+  }
+
+  isSelectedEarthquake(event) {
+    return this.selectedEarthquakeId && this.getEarthquakeIdentity(event) === this.selectedEarthquakeId;
+  }
+
+  getEventTimeText(event) {
+    const value = event?.time_utc || event?.updated || event?.updated_at || event?.last_updated || event?.lastUpdate;
+    if (!value) return 'Time unknown';
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Time unknown';
+
+    return date.toLocaleString([], {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
   }
 
   isConfirmedEarthquake(event) {
